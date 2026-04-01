@@ -555,6 +555,14 @@ export type MapMarkerResponseDto = {
     /** State/Province name */
     state: string | null;
 };
+export type SharingOptionsResponseDto = {
+    inTimeline: boolean;
+    permissions: SharingPermission[];
+};
+export type UpdateSharingOptionsDto = {
+    inTimeline: boolean;
+    permissions: SharingPermission[];
+};
 export type UpdateAlbumUserDto = {
     role: AlbumUserRole;
 };
@@ -792,6 +800,8 @@ export type PersonResponseDto = {
     birthDate: string | null;
     /** Person color (hex) */
     color?: string;
+    /** Face cluster ID */
+    faceClusterId: string | null;
     /** Person ID */
     id: string;
     /** Is favorite */
@@ -875,6 +885,7 @@ export type AssetResponseDto = {
     /** Owner user ID */
     ownerId: string;
     people?: PersonResponseDto[];
+    permissions: SharingPermission[];
     /** Is resized */
     resized?: boolean;
     stack?: (AssetStackResponseDto) | null;
@@ -1460,8 +1471,8 @@ export type PersonUpdateDto = {
     /** Person name */
     name?: string;
 };
-export type MergePersonDto = {
-    /** Person IDs to merge */
+export type MergeFaceClusterDto = {
+    /** Face cluster IDs to merge */
     ids: string[];
 };
 export type AssetFaceUpdateItem = {
@@ -2944,6 +2955,8 @@ export type SyncAssetFaceV2 = {
     boundingBoxY2: number;
     /** Face deleted at */
     deletedAt: string | null;
+    /** Person ID */
+    faceClusterId: string | null;
     /** Asset face ID */
     id: string;
     /** Image height */
@@ -2952,8 +2965,6 @@ export type SyncAssetFaceV2 = {
     imageWidth: number;
     /** Is the face visible in the asset */
     isVisible: boolean;
-    /** Person ID */
-    personId: string | null;
     /** Source type */
     sourceType: string;
 };
@@ -3748,6 +3759,32 @@ export function getAlbumMapMarkers({ id, key, slug }: {
     }))}`, {
         ...opts
     }));
+}
+/**
+ * Get own sharing permissions
+ */
+export function getOwnAlbumUser({ id }: {
+    id: string;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: SharingOptionsResponseDto;
+    }>(`/albums/${encodeURIComponent(id)}/user/self`, {
+        ...opts
+    }));
+}
+/**
+ * Update own sharing permissions
+ */
+export function updateOwnAlbumUser({ id, updateSharingOptionsDto }: {
+    id: string;
+    updateSharingOptionsDto: UpdateSharingOptionsDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText(`/albums/${encodeURIComponent(id)}/user/self`, oazapfts.json({
+        ...opts,
+        method: "PUT",
+        body: updateSharingOptionsDto
+    })));
 }
 /**
  * Remove user from album
@@ -5153,9 +5190,9 @@ export function updatePerson({ id, personUpdateDto }: {
 /**
  * Merge people
  */
-export function mergePerson({ id, mergePersonDto }: {
+export function mergePerson({ id, mergeFaceClusterDto }: {
     id: string;
-    mergePersonDto: MergePersonDto;
+    mergeFaceClusterDto: MergeFaceClusterDto;
 }, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
         status: 200;
@@ -5163,7 +5200,7 @@ export function mergePerson({ id, mergePersonDto }: {
     }>(`/people/${encodeURIComponent(id)}/merge`, oazapfts.json({
         ...opts,
         method: "POST",
-        body: mergePersonDto
+        body: mergeFaceClusterDto
     })));
 }
 /**
@@ -6821,6 +6858,19 @@ export enum BulkIdErrorReason {
     Unknown = "unknown",
     Validation = "validation"
 }
+export enum SharingPermission {
+    All = "all",
+    AssetRead = "asset.read",
+    AssetUpdate = "asset.update",
+    AssetEdit = "asset.edit",
+    AssetDelete = "asset.delete",
+    AssetShare = "asset.share",
+    ExifRead = "exif.read",
+    PersonRead = "person.read",
+    PersonUpdate = "person.update",
+    PersonMerge = "person.merge",
+    PersonDelete = "person.delete"
+}
 export enum Permission {
     All = "all",
     ActivityCreate = "activity.create",
@@ -7028,7 +7078,8 @@ export enum ManualJobName {
     UserCleanup = "user-cleanup",
     MemoryCleanup = "memory-cleanup",
     MemoryCreate = "memory-create",
-    BackupDatabase = "backup-database"
+    BackupDatabase = "backup-database",
+    PersonGroupMerge = "person-group-merge"
 }
 export enum QueueName {
     ThumbnailGeneration = "thumbnailGeneration",
@@ -7105,6 +7156,7 @@ export enum JobName {
     DatabaseBackup = "DatabaseBackup",
     FacialRecognitionQueueAll = "FacialRecognitionQueueAll",
     FacialRecognition = "FacialRecognition",
+    FacialRecognitionMerge = "FacialRecognitionMerge",
     FileDelete = "FileDelete",
     FileMigrationQueueAll = "FileMigrationQueueAll",
     LibraryDeleteCheck = "LibraryDeleteCheck",

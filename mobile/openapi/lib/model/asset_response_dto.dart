@@ -37,6 +37,7 @@ class AssetResponseDto {
     this.owner,
     required this.ownerId,
     this.people = const [],
+    this.permissions = const [],
     this.resized,
     this.stack,
     this.tags = const [],
@@ -140,6 +141,8 @@ class AssetResponseDto {
 
   List<PersonResponseDto> people;
 
+  List<SharingPermission> permissions;
+
   /// Is resized
   ///
   /// Please note: This property should have been non-nullable! Since the specification file
@@ -195,6 +198,7 @@ class AssetResponseDto {
     other.owner == owner &&
     other.ownerId == ownerId &&
     _deepEquality.equals(other.people, people) &&
+    _deepEquality.equals(other.permissions, permissions) &&
     other.resized == resized &&
     other.stack == stack &&
     _deepEquality.equals(other.tags, tags) &&
@@ -231,6 +235,7 @@ class AssetResponseDto {
     (owner == null ? 0 : owner!.hashCode) +
     (ownerId.hashCode) +
     (people.hashCode) +
+    (permissions.hashCode) +
     (resized == null ? 0 : resized!.hashCode) +
     (stack == null ? 0 : stack!.hashCode) +
     (tags.hashCode) +
@@ -241,7 +246,7 @@ class AssetResponseDto {
     (width == null ? 0 : width!.hashCode);
 
   @override
-  String toString() => 'AssetResponseDto[checksum=$checksum, createdAt=$createdAt, duplicateId=$duplicateId, duration=$duration, exifInfo=$exifInfo, fileCreatedAt=$fileCreatedAt, fileModifiedAt=$fileModifiedAt, hasMetadata=$hasMetadata, height=$height, id=$id, isArchived=$isArchived, isEdited=$isEdited, isFavorite=$isFavorite, isOffline=$isOffline, isTrashed=$isTrashed, libraryId=$libraryId, livePhotoVideoId=$livePhotoVideoId, localDateTime=$localDateTime, originalFileName=$originalFileName, originalMimeType=$originalMimeType, originalPath=$originalPath, owner=$owner, ownerId=$ownerId, people=$people, resized=$resized, stack=$stack, tags=$tags, thumbhash=$thumbhash, type=$type, updatedAt=$updatedAt, visibility=$visibility, width=$width]';
+  String toString() => 'AssetResponseDto[checksum=$checksum, createdAt=$createdAt, duplicateId=$duplicateId, duration=$duration, exifInfo=$exifInfo, fileCreatedAt=$fileCreatedAt, fileModifiedAt=$fileModifiedAt, hasMetadata=$hasMetadata, height=$height, id=$id, isArchived=$isArchived, isEdited=$isEdited, isFavorite=$isFavorite, isOffline=$isOffline, isTrashed=$isTrashed, libraryId=$libraryId, livePhotoVideoId=$livePhotoVideoId, localDateTime=$localDateTime, originalFileName=$originalFileName, originalMimeType=$originalMimeType, originalPath=$originalPath, owner=$owner, ownerId=$ownerId, people=$people, permissions=$permissions, resized=$resized, stack=$stack, tags=$tags, thumbhash=$thumbhash, type=$type, updatedAt=$updatedAt, visibility=$visibility, width=$width]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -301,6 +306,7 @@ class AssetResponseDto {
     }
       json[r'ownerId'] = this.ownerId;
       json[r'people'] = this.people;
+      json[r'permissions'] = this.permissions;
     if (this.resized != null) {
       json[r'resized'] = this.resized;
     } else {
@@ -361,6 +367,7 @@ class AssetResponseDto {
         owner: UserResponseDto.fromJson(json[r'owner']),
         ownerId: mapValueOfType<String>(json, r'ownerId')!,
         people: PersonResponseDto.listFromJson(json[r'people']),
+        permissions: SharingPermission.listFromJson(json[r'permissions']),
         resized: mapValueOfType<bool>(json, r'resized'),
         stack: AssetStackResponseDto.fromJson(json[r'stack']),
         tags: TagResponseDto.listFromJson(json[r'tags']),
@@ -433,6 +440,7 @@ class AssetResponseDto {
     'originalFileName',
     'originalPath',
     'ownerId',
+    'permissions',
     'thumbhash',
     'type',
     'updatedAt',

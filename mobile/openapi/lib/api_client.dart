@@ -442,8 +442,8 @@ class ApiClient {
           return MemoryTypeTypeTransformer().decode(value);
         case 'MemoryUpdateDto':
           return MemoryUpdateDto.fromJson(value);
-        case 'MergePersonDto':
-          return MergePersonDto.fromJson(value);
+        case 'MergeFaceClusterDto':
+          return MergeFaceClusterDto.fromJson(value);
         case 'MetadataSearchDto':
           return MetadataSearchDto.fromJson(value);
         case 'MirrorAxis':
@@ -630,6 +630,10 @@ class ApiClient {
           return SharedLinksResponse.fromJson(value);
         case 'SharedLinksUpdate':
           return SharedLinksUpdate.fromJson(value);
+        case 'SharingOptionsResponseDto':
+          return SharingOptionsResponseDto.fromJson(value);
+        case 'SharingPermission':
+          return SharingPermissionTypeTransformer().decode(value);
         case 'SignUpDto':
           return SignUpDto.fromJson(value);
         case 'SmartSearchDto':
@@ -828,6 +832,8 @@ class ApiClient {
           return UpdateAssetDto.fromJson(value);
         case 'UpdateLibraryDto':
           return UpdateLibraryDto.fromJson(value);
+        case 'UpdateSharingOptionsDto':
+          return UpdateSharingOptionsDto.fromJson(value);
         case 'UsageByUserDto':
           return UsageByUserDto.fromJson(value);
         case 'UserAdminCreateDto':

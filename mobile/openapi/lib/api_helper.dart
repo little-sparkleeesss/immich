@@ -163,6 +163,9 @@ String parameterToString(dynamic value) {
   if (value is SharedLinkType) {
     return SharedLinkTypeTypeTransformer().encode(value).toString();
   }
+  if (value is SharingPermission) {
+    return SharingPermissionTypeTransformer().encode(value).toString();
+  }
   if (value is SourceType) {
     return SourceTypeTypeTransformer().encode(value).toString();
   }

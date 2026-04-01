@@ -15,6 +15,7 @@ class PersonResponseDto {
   PersonResponseDto({
     required this.birthDate,
     this.color,
+    required this.faceClusterId,
     required this.id,
     this.isFavorite,
     required this.isHidden,
@@ -34,6 +35,9 @@ class PersonResponseDto {
   /// Consider adding a "default:" property in the specification file to hide this note.
   ///
   String? color;
+
+  /// Face cluster ID
+  String? faceClusterId;
 
   /// Person ID
   String id;
@@ -69,6 +73,7 @@ class PersonResponseDto {
   bool operator ==(Object other) => identical(this, other) || other is PersonResponseDto &&
     other.birthDate == birthDate &&
     other.color == color &&
+    other.faceClusterId == faceClusterId &&
     other.id == id &&
     other.isFavorite == isFavorite &&
     other.isHidden == isHidden &&
@@ -81,6 +86,7 @@ class PersonResponseDto {
     // ignore: unnecessary_parenthesis
     (birthDate == null ? 0 : birthDate!.hashCode) +
     (color == null ? 0 : color!.hashCode) +
+    (faceClusterId == null ? 0 : faceClusterId!.hashCode) +
     (id.hashCode) +
     (isFavorite == null ? 0 : isFavorite!.hashCode) +
     (isHidden.hashCode) +
@@ -89,7 +95,7 @@ class PersonResponseDto {
     (updatedAt == null ? 0 : updatedAt!.hashCode);
 
   @override
-  String toString() => 'PersonResponseDto[birthDate=$birthDate, color=$color, id=$id, isFavorite=$isFavorite, isHidden=$isHidden, name=$name, thumbnailPath=$thumbnailPath, updatedAt=$updatedAt]';
+  String toString() => 'PersonResponseDto[birthDate=$birthDate, color=$color, faceClusterId=$faceClusterId, id=$id, isFavorite=$isFavorite, isHidden=$isHidden, name=$name, thumbnailPath=$thumbnailPath, updatedAt=$updatedAt]';
 
   Map<String, dynamic> toJson() {
     final json = <String, dynamic>{};
@@ -102,6 +108,11 @@ class PersonResponseDto {
       json[r'color'] = this.color;
     } else {
     //  json[r'color'] = null;
+    }
+    if (this.faceClusterId != null) {
+      json[r'faceClusterId'] = this.faceClusterId;
+    } else {
+    //  json[r'faceClusterId'] = null;
     }
       json[r'id'] = this.id;
     if (this.isFavorite != null) {
@@ -131,6 +142,7 @@ class PersonResponseDto {
       return PersonResponseDto(
         birthDate: mapDateTime(json, r'birthDate', r''),
         color: mapValueOfType<String>(json, r'color'),
+        faceClusterId: mapValueOfType<String>(json, r'faceClusterId'),
         id: mapValueOfType<String>(json, r'id')!,
         isFavorite: mapValueOfType<bool>(json, r'isFavorite'),
         isHidden: mapValueOfType<bool>(json, r'isHidden')!,
@@ -185,6 +197,7 @@ class PersonResponseDto {
   /// The list of required keys that must be present in a JSON.
   static const requiredKeys = <String>{
     'birthDate',
+    'faceClusterId',
     'id',
     'isHidden',
     'name',
