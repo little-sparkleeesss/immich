@@ -5,8 +5,10 @@ import 'package:immich_mobile/domain/models/asset/base_asset.model.dart';
 import 'package:immich_mobile/extensions/platform_extensions.dart';
 import 'package:immich_mobile/infrastructure/repositories/local_album.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/local_asset.repository.dart';
+import 'package:immich_mobile/infrastructure/repositories/stack.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/trashed_local_asset.repository.dart';
 import 'package:immich_mobile/platform/native_sync_api.g.dart';
+import 'package:immich_mobile/repositories/asset_api.repository.dart';
 import 'package:logging/logging.dart';
 
 const String _kHashCancelledCode = "HASH_CANCELLED";
@@ -17,6 +19,8 @@ class HashService {
   final DriftLocalAssetRepository _localAssetRepository;
   final DriftTrashedLocalAssetRepository _trashedLocalAssetRepository;
   final NativeSyncApi _nativeSyncApi;
+  final DriftStackRepository _stackRepository;
+  final AssetApiRepository _assetApiRepository;
   final bool Function()? _cancelChecker;
   final _log = Logger('HashService');
 
@@ -25,6 +29,8 @@ class HashService {
     required this._localAssetRepository,
     required this._trashedLocalAssetRepository,
     required this._nativeSyncApi,
+    required this._stackRepository,
+    required this._assetApiRepository,
     this._cancelChecker,
     int? batchSize,
   }) : _batchSize = batchSize ?? kBatchHashFileLimit;
@@ -40,6 +46,7 @@ class HashService {
 
       // Sorted by backupSelection followed by isCloud
       final localAlbums = await _localAlbumRepository.getBackupAlbums();
+      final hashedIds = <String>{};
 
       for (final album in localAlbums) {
         if (isCancelled) {
@@ -49,7 +56,7 @@ class HashService {
 
         final assetsToHash = await _localAlbumRepository.getAssetsToHash(album.id);
         if (assetsToHash.isNotEmpty) {
-          await _hashAssets(album, assetsToHash);
+          await _hashAssets(album, assetsToHash, hashedIds: hashedIds);
         }
       }
       if (CurrentPlatform.isAndroid && localAlbums.isNotEmpty) {
@@ -57,8 +64,17 @@ class HashService {
         final trashedToHash = await _trashedLocalAssetRepository.getAssetsToHash(backupAlbumIds);
         if (trashedToHash.isNotEmpty) {
           final pseudoAlbum = LocalAlbum(id: '-pseudoAlbum', name: 'Trash', updatedAt: DateTime.now());
-          await _hashAssets(pseudoAlbum, trashedToHash, isTrashed: true);
+          await _hashAssets(pseudoAlbum, trashedToHash, isTrashed: true, hashedIds: hashedIds);
         }
+      }
+
+      // Revert reconcile for non-styled photos: the reverted edit hashes back to the
+      // original's exact bytes, which are already the stack base, so it's not a backup
+      // candidate and never reaches upload. Flip the primary here. Styled photos
+      // re-encode to fresh bytes and get flipped on the upload path instead
+      // (EditRevertService.tryHandleRevert).
+      if (CurrentPlatform.isIOS && hashedIds.isNotEmpty && !isCancelled) {
+        await _reconcileReverts(hashedIds);
       }
     } on PlatformException catch (e) {
       if (e.code == _kHashCancelledCode) {
@@ -76,7 +92,12 @@ class HashService {
   /// Processes a list of [LocalAsset]s, storing their hash and updating the assets in the DB
   /// with hash for those that were successfully hashed. Hashes are looked up in a table
   /// [LocalAssetHashEntity] by local id. Only missing entries are newly hashed and added to the DB.
-  Future<void> _hashAssets(LocalAlbum album, List<LocalAsset> assetsToHash, {bool isTrashed = false}) async {
+  Future<void> _hashAssets(
+    LocalAlbum album,
+    List<LocalAsset> assetsToHash, {
+    bool isTrashed = false,
+    required Set<String> hashedIds,
+  }) async {
     final toHash = <String, LocalAsset>{};
 
     for (final asset in assetsToHash) {
@@ -87,16 +108,21 @@ class HashService {
 
       toHash[asset.id] = asset;
       if (toHash.length == _batchSize) {
-        await _processBatch(album, toHash, isTrashed);
+        await _processBatch(album, toHash, isTrashed, hashedIds);
         toHash.clear();
       }
     }
 
-    await _processBatch(album, toHash, isTrashed);
+    await _processBatch(album, toHash, isTrashed, hashedIds);
   }
 
   /// Processes a batch of assets.
-  Future<void> _processBatch(LocalAlbum album, Map<String, LocalAsset> toHash, bool isTrashed) async {
+  Future<void> _processBatch(
+    LocalAlbum album,
+    Map<String, LocalAsset> toHash,
+    bool isTrashed,
+    Set<String> hashedIds,
+  ) async {
     if (toHash.isEmpty) {
       return;
     }
@@ -135,6 +161,34 @@ class HashService {
       await _trashedLocalAssetRepository.updateHashes(hashed);
     } else {
       await _localAssetRepository.updateHashes(hashed);
+    }
+    hashedIds.addAll(hashed.keys);
+  }
+
+  Future<void> _reconcileReverts(Set<String> localIds) async {
+    final List<StackReconcileTarget> targets;
+    try {
+      targets = await _stackRepository.findRevertReconcileTargets(localIds);
+    } catch (error, stack) {
+      _log.warning("findRevertReconcileTargets failed", error, stack);
+      return;
+    }
+
+    for (final target in targets) {
+      try {
+        await _assetApiRepository.setStackPrimary(target.stackId, target.newPrimaryId);
+        await _stackRepository.setPrimary(target.stackId, target.newPrimaryId);
+        // Roll priorRemoteId forward to the matched member (now the primary) so a
+        // later edit stacks onto THAT (the current render), not the old edit.
+        await _localAssetRepository.markSynced(
+          target.localAssetId,
+          priorRemoteId: target.newPrimaryId,
+          syncedChecksum: target.localAssetChecksum,
+        );
+      } catch (error, stack) {
+        _log.warning("revert reconcile flip failed for stack ${target.stackId}", error, stack);
+        continue;
+      }
     }
   }
 }

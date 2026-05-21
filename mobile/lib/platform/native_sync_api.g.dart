@@ -88,6 +88,8 @@ int _deepHash(Object? value) {
 
 enum PlatformAssetPlaybackStyle { unknown, image, video, imageAnimated, livePhoto, videoLooping }
 
+enum EditState { notEdited, edited, unknown }
+
 class PlatformAsset {
   PlatformAsset({
     required this.id,
@@ -395,6 +397,55 @@ class CloudIdResult {
   int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
 }
 
+class BaseResource {
+  BaseResource({required this.path, required this.sha1, required this.sizeBytes, required this.mimeType});
+
+  String path;
+
+  String sha1;
+
+  int sizeBytes;
+
+  String mimeType;
+
+  List<Object?> _toList() {
+    return <Object?>[path, sha1, sizeBytes, mimeType];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static BaseResource decode(Object result) {
+    result as List<Object?>;
+    return BaseResource(
+      path: result[0]! as String,
+      sha1: result[1]! as String,
+      sizeBytes: result[2]! as int,
+      mimeType: result[3]! as String,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! BaseResource || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(path, other.path) &&
+        _deepEquals(sha1, other.sha1) &&
+        _deepEquals(sizeBytes, other.sizeBytes) &&
+        _deepEquals(mimeType, other.mimeType);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+}
+
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -405,20 +456,26 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is PlatformAssetPlaybackStyle) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    } else if (value is PlatformAsset) {
+    } else if (value is EditState) {
       buffer.putUint8(130);
-      writeValue(buffer, value.encode());
-    } else if (value is PlatformAlbum) {
+      writeValue(buffer, value.index);
+    } else if (value is PlatformAsset) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    } else if (value is SyncDelta) {
+    } else if (value is PlatformAlbum) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    } else if (value is HashResult) {
+    } else if (value is SyncDelta) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    } else if (value is CloudIdResult) {
+    } else if (value is HashResult) {
       buffer.putUint8(134);
+      writeValue(buffer, value.encode());
+    } else if (value is CloudIdResult) {
+      buffer.putUint8(135);
+      writeValue(buffer, value.encode());
+    } else if (value is BaseResource) {
+      buffer.putUint8(136);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -432,15 +489,20 @@ class _PigeonCodec extends StandardMessageCodec {
         final value = readValue(buffer) as int?;
         return value == null ? null : PlatformAssetPlaybackStyle.values[value];
       case 130:
-        return PlatformAsset.decode(readValue(buffer)!);
+        final value = readValue(buffer) as int?;
+        return value == null ? null : EditState.values[value];
       case 131:
-        return PlatformAlbum.decode(readValue(buffer)!);
+        return PlatformAsset.decode(readValue(buffer)!);
       case 132:
-        return SyncDelta.decode(readValue(buffer)!);
+        return PlatformAlbum.decode(readValue(buffer)!);
       case 133:
-        return HashResult.decode(readValue(buffer)!);
+        return SyncDelta.decode(readValue(buffer)!);
       case 134:
+        return HashResult.decode(readValue(buffer)!);
+      case 135:
         return CloudIdResult.decode(readValue(buffer)!);
+      case 136:
+        return BaseResource.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
     }
@@ -690,5 +752,43 @@ class NativeSyncApi {
       isNullValid: false,
     );
     return (pigeonVar_replyValue! as List<Object?>).cast<CloudIdResult>();
+  }
+
+  Future<BaseResource?> getBaseResource(String assetId, {bool allowNetworkAccess = false}) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.immich_mobile.NativeSyncApi.getBaseResource$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[assetId, allowNetworkAccess]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
+    return pigeonVar_replyValue as BaseResource?;
+  }
+
+  Future<EditState> getEditState(String assetId, {bool allowNetworkAccess = false}) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.immich_mobile.NativeSyncApi.getEditState$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[assetId, allowNetworkAccess]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
+    return pigeonVar_replyValue! as EditState;
   }
 }

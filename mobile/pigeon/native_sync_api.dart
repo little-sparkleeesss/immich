@@ -103,6 +103,21 @@ class CloudIdResult {
   const CloudIdResult({required this.assetId, this.error, this.cloudId});
 }
 
+class BaseResource {
+  final String path;
+  final String sha1;
+  final int sizeBytes;
+  final String mimeType;
+
+  const BaseResource({required this.path, required this.sha1, required this.sizeBytes, required this.mimeType});
+}
+
+// Whether an iOS asset currently carries a user edit, as opposed to a
+// capture-time Photographic Style or a reverted edit. `unknown` means the
+// adjustment data couldn't be read (e.g. the asset is offloaded to iCloud and
+// network wasn't allowed), so callers must not treat it as "not edited".
+enum EditState { notEdited, edited, unknown }
+
 @HostApi()
 abstract class NativeSyncApi {
   bool shouldFullSync();
@@ -140,4 +155,12 @@ abstract class NativeSyncApi {
 
   @TaskQueue(type: TaskQueueType.serialBackgroundThread)
   List<CloudIdResult> getCloudIdForAssetIds(List<String> assetIds);
+
+  @async
+  @TaskQueue(type: TaskQueueType.serialBackgroundThread)
+  BaseResource? getBaseResource(String assetId, {bool allowNetworkAccess = false});
+
+  @async
+  @TaskQueue(type: TaskQueueType.serialBackgroundThread)
+  EditState getEditState(String assetId, {bool allowNetworkAccess = false});
 }

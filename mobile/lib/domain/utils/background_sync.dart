@@ -81,6 +81,10 @@ class BackgroundSyncManager {
     } on CanceledError {
       // Ignore cancellation errors
     }
+
+    // Stop the local-sync and hash slots too. The revert reconcile runs in the hash
+    // task and shouldn't outlive the session.
+    await cancelLocal();
   }
 
   Future<void> cancelLocal() async {
@@ -184,6 +188,22 @@ class BackgroundSyncManager {
         .whenComplete(() {
           _syncTask = null;
         });
+  }
+
+  /// Runs a remote sync guaranteed to observe changes up to now. [syncRemote]
+  /// joins an in-flight sync whose snapshot can pre-date a just-received change
+  /// (e.g. a stack update) and miss it, so wait for any in-flight sync to finish
+  /// first, then run a fresh one.
+  Future<void> runFreshRemoteSync() async {
+    final inflight = _syncTask;
+    if (inflight != null) {
+      try {
+        await inflight.future;
+      } catch (_) {
+        // The in-flight sync's outcome doesn't matter; we only need a fresh one after it.
+      }
+    }
+    await syncRemote();
   }
 
   Future<void> syncWebsocketBatchV1(List<dynamic> batchData) {

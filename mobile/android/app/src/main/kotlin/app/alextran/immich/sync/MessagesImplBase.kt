@@ -476,4 +476,14 @@ open class NativeSyncApiImplBase(context: Context) : ImmichPlugin(), ActivityAwa
   fun getCloudIdForAssetIds(assetIds: List<String>): List<CloudIdResult> {
     return emptyList()
   }
+
+  // Android has no Photos-style edit original to stack; iOS-only.
+  fun getBaseResource(assetId: String, allowNetworkAccess: Boolean, callback: (Result<BaseResource?>) -> Unit) {
+    callback(Result.success(null))
+  }
+
+  // iOS-only; Android assets never carry a Photos-style edit.
+  fun getEditState(assetId: String, allowNetworkAccess: Boolean, callback: (Result<EditState>) -> Unit) {
+    callback(Result.success(EditState.NOT_EDITED))
+  }
 }

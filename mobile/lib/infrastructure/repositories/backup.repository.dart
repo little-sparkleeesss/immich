@@ -58,7 +58,8 @@ class DriftBackupRepository extends DriftDatabaseRepository {
             INNER JOIN main.local_album_entity la on laa.album_id = la.id
             WHERE laa.asset_id = lae.id
                 AND la.backup_selection = ?3
-        );
+        )
+        AND (lae.checksum IS NULL OR lae.synced_checksum IS NULL OR lae.synced_checksum != lae.checksum);
       ''';
 
     final row = await _db
@@ -104,6 +105,10 @@ class DriftBackupRepository extends DriftDatabaseRepository {
                   _db.remoteAssetEntity.checksum.equalsExp(lae.checksum) & _db.remoteAssetEntity.ownerId.equals(userId),
                 ),
             ) &
+            // iOS revert: a reverted local hashes fresh (matches nothing remote),
+            // but if it was already reconciled (syncedChecksum == current checksum)
+            // it's handled, so don't re-queue it as a fresh upload.
+            (lae.syncedChecksum.isNull() | lae.syncedChecksum.equalsExp(lae.checksum).not()) &
             lae.id.isNotInQuery(_getExcludedSubquery()),
       )
       ..orderBy([(localAsset) => OrderingTerm.desc(localAsset.createdAt)]);

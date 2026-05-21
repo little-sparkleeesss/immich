@@ -14,6 +14,7 @@ import 'package:immich_mobile/infrastructure/entities/remote_album_asset.entity.
 import 'package:immich_mobile/infrastructure/entities/remote_album_user.entity.drift.dart';
 import 'package:immich_mobile/infrastructure/entities/remote_asset.entity.drift.dart';
 import 'package:immich_mobile/infrastructure/entities/remote_asset_cloud_id.entity.drift.dart';
+import 'package:immich_mobile/infrastructure/entities/stack.entity.drift.dart';
 import 'package:immich_mobile/infrastructure/entities/user.entity.drift.dart';
 import 'package:immich_mobile/infrastructure/repositories/db.repository.dart';
 import 'package:immich_mobile/utils/option.dart';
@@ -86,6 +87,7 @@ class MediumRepositoryContext {
     String? stackId,
     String? thumbHash,
     String? libraryId,
+    DateTime? uploadedAt,
   }) async {
     id ??= TestUtils.uuid();
     createdAt ??= TestUtils.date();
@@ -112,6 +114,19 @@ class MediumRepositoryContext {
             localDateTime: .new(createdAt.toLocal()),
             thumbHash: .new(TestUtils.uuid(thumbHash)),
             libraryId: .new(TestUtils.uuid(libraryId)),
+            uploadedAt: .new(uploadedAt),
+          ),
+        );
+  }
+
+  Future<StackEntityData> newStack({String? id, String? ownerId, required String primaryAssetId}) {
+    return db
+        .into(db.stackEntity)
+        .insertReturning(
+          StackEntityCompanion(
+            id: .new(TestUtils.uuid(id)),
+            ownerId: .new(TestUtils.uuid(ownerId)),
+            primaryAssetId: .new(primaryAssetId),
           ),
         );
   }
@@ -245,6 +260,8 @@ class MediumRepositoryContext {
     int? durationMs,
     int? orientation,
     DateTime? updatedAt,
+    String? priorRemoteId,
+    String? syncedChecksum,
   }) async {
     id ??= TestUtils.uuid();
     return db
@@ -266,6 +283,8 @@ class MediumRepositoryContext {
             adjustmentTime: _resolveUndefined(adjustmentTime, adjustmentTimeOption, DateTime.now()),
             latitude: .new(latitude ?? TestUtils.randDouble(-90, 90)),
             longitude: .new(longitude ?? TestUtils.randDouble(-180, 180)),
+            priorRemoteId: .new(priorRemoteId),
+            syncedChecksum: .new(syncedChecksum),
           ),
         );
   }

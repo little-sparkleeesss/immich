@@ -140,86 +140,60 @@ export class AssetMediaService extends BaseService {
 
       this.requireQuota(auth, file.size);
 
+      if (dto.stackParentId) {
+        if (auth.sharedLink) {
+          throw new BadRequestException('Cannot stack an asset uploaded via shared link');
+        }
+        await this.requireAccess({ auth, permission: Permission.AssetUpdate, ids: [dto.stackParentId] });
+        const parent = await this.assetRepository.getById(dto.stackParentId);
+        if (!parent || parent.deletedAt) {
+          throw new BadRequestException('Cannot stack onto a trashed or missing asset');
+        }
+      }
+
       if (dto.livePhotoVideoId) {
         await onBeforeLink(
           { asset: this.assetRepository, event: this.eventRepository },
           { userId: auth.user.id, livePhotoVideoId: dto.livePhotoVideoId },
         );
       }
-
-      const asset = await this.assetRepository.create({
-        ownerId: auth.user.id,
-        libraryId: null,
-
-        checksum: file.checksum,
-        checksumAlgorithm: ChecksumAlgorithm.sha1File,
-        originalPath: file.originalPath,
-
-        fileCreatedAt: dto.fileCreatedAt,
-        fileModifiedAt: dto.fileModifiedAt,
-        localDateTime: dto.fileCreatedAt,
-
-        type: mimeTypes.assetType(file.originalPath),
-        isFavorite: dto.isFavorite,
-        duration: dto.duration || null,
-        visibility: dto.visibility ?? AssetVisibility.Timeline,
-        livePhotoVideoId: dto.livePhotoVideoId,
-        originalFileName: dto.filename || file.originalName,
-      });
-
-      if (dto.metadata?.length) {
-        await this.assetRepository.upsertMetadata(asset.id, dto.metadata);
-      }
-
-      if (sidecarFile) {
-        await this.assetRepository.upsertFile({
-          assetId: asset.id,
-          path: sidecarFile.originalPath,
-          type: AssetFileType.Sidecar,
-        });
-        await this.storageRepository.utimes(sidecarFile.originalPath, new Date(), new Date(dto.fileModifiedAt));
-      }
-      await this.storageRepository.utimes(file.originalPath, new Date(), new Date(dto.fileModifiedAt));
-      await this.assetRepository.upsertExif({
-        exif: { assetId: asset.id, fileSizeInByte: file.size },
-        lockedPropertiesBehavior: 'override',
-      });
-
-      await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: asset.id, source: 'upload' } });
+      // When stacking, defer the AssetCreate event and emit it below with the
+      // populated stackId, so clients don't briefly see the asset as standalone.
+      const asset = await this.create(auth.user.id, dto, file, sidecarFile, { skipEventEmit: !!dto.stackParentId });
 
       if (auth.sharedLink) {
         await this.addToSharedLink(auth.sharedLink, asset.id);
       }
 
-      await this.eventRepository.emit('AssetCreate', { asset, file });
+      if (dto.stackParentId) {
+        const linkResult = await this.linkToStackParent(auth.user.id, asset.id, dto.stackParentId);
+        await this.eventRepository.emit('AssetCreate', {
+          asset: linkResult ? { ...asset, stackId: linkResult.stackId } : asset,
+          file,
+        });
+      }
 
       return { id: asset.id, status: AssetMediaStatus.CREATED };
     } catch (error: any) {
-      // clean up files
-      await this.jobRepository.queue({
-        name: JobName.FileDelete,
-        data: { files: [file.originalPath, sidecarFile?.originalPath] },
-      });
-
-      // handle duplicates with a success response
-      if (isAssetChecksumConstraint(error)) {
-        const duplicateId = await this.assetRepository.getUploadAssetIdByChecksum(auth.user.id, file.checksum);
-        if (!duplicateId) {
-          this.logger.error(`Error locating duplicate for checksum constraint`);
-          throw new InternalServerErrorException();
-        }
-
-        if (auth.sharedLink) {
-          await this.addToSharedLink(auth.sharedLink, duplicateId);
-        }
-
-        this.logger.debug(`Duplicate asset upload rejected: existing asset ${duplicateId}`);
-        return { status: AssetMediaStatus.DUPLICATE, id: duplicateId };
-      }
-
-      this.logger.error(`Error uploading file ${error}`, error?.stack);
-      throw error;
+      return this.handleUploadError(error, auth, file, sidecarFile, dto.stackParentId);
     }
+  }
+
+  private async linkToStackParent(
+    ownerId: string,
+    newAssetId: string,
+    parentId: string,
+  ): Promise<{ stackId: string; created: boolean } | null> {
+    const result = await this.stackRepository.linkAsset(ownerId, newAssetId, parentId);
+    if (!result) {
+      this.logger.warn(`Could not link asset ${newAssetId} to stack parent ${parentId}: parent missing or not owned`);
+      return null;
+    }
+    await this.eventRepository.emit(result.created ? 'StackCreate' : 'StackUpdate', {
+      stackId: result.stackId,
+      userId: ownerId,
+    });
+    return result;
   }
 
   async downloadOriginal(auth: AuthDto, id: string, dto: AssetDownloadOriginalDto): Promise<ImmichFileResponse> {
@@ -345,6 +319,99 @@ export class AssetMediaService extends BaseService {
     await (sharedLink.albumId
       ? this.albumRepository.addAssetIds(sharedLink.albumId, [assetId])
       : this.sharedLinkRepository.addAssets(sharedLink.id, [assetId]));
+  }
+
+  private async handleUploadError(
+    error: any,
+    auth: AuthDto,
+    file: UploadFile,
+    sidecarFile?: UploadFile,
+    stackParentId?: string,
+  ): Promise<AssetMediaResponseDto> {
+    // clean up files
+    await this.jobRepository.queue({
+      name: JobName.FileDelete,
+      data: { files: [file.originalPath, sidecarFile?.originalPath] },
+    });
+
+    // handle duplicates with a success response
+    if (isAssetChecksumConstraint(error)) {
+      const duplicateId = await this.assetRepository.getUploadAssetIdByChecksum(auth.user.id, file.checksum);
+      if (!duplicateId) {
+        this.logger.error(`Error locating duplicate for checksum constraint`);
+        throw new InternalServerErrorException();
+      }
+
+      if (auth.sharedLink) {
+        await this.addToSharedLink(auth.sharedLink, duplicateId);
+      }
+
+      if (stackParentId) {
+        // Adopt the existing duplicate into the stack so a re-uploaded edit still
+        // stacks instead of silently staying separate.
+        await this.linkToStackParent(auth.user.id, duplicateId, stackParentId);
+      }
+
+      this.logger.debug(`Duplicate asset upload rejected: existing asset ${duplicateId}`);
+      return { status: AssetMediaStatus.DUPLICATE, id: duplicateId };
+    }
+
+    this.logger.error(`Error uploading file ${error}`, error?.stack);
+    throw error;
+  }
+
+  private async create(
+    ownerId: string,
+    dto: AssetMediaCreateDto,
+    file: UploadFile,
+    sidecarFile?: UploadFile,
+    options?: { skipEventEmit?: boolean },
+  ) {
+    const asset = await this.assetRepository.create({
+      ownerId,
+      libraryId: null,
+
+      checksum: file.checksum,
+      checksumAlgorithm: ChecksumAlgorithm.sha1File,
+      originalPath: file.originalPath,
+
+      fileCreatedAt: dto.fileCreatedAt,
+      fileModifiedAt: dto.fileModifiedAt,
+      localDateTime: dto.fileCreatedAt,
+
+      type: mimeTypes.assetType(file.originalPath),
+      isFavorite: dto.isFavorite,
+      duration: dto.duration || null,
+      visibility: dto.visibility ?? AssetVisibility.Timeline,
+      livePhotoVideoId: dto.livePhotoVideoId,
+      originalFileName: dto.filename || file.originalName,
+    });
+
+    if (dto.metadata?.length) {
+      await this.assetRepository.upsertMetadata(asset.id, dto.metadata);
+    }
+
+    if (sidecarFile) {
+      await this.assetRepository.upsertFile({
+        assetId: asset.id,
+        path: sidecarFile.originalPath,
+        type: AssetFileType.Sidecar,
+      });
+      await this.storageRepository.utimes(sidecarFile.originalPath, new Date(), new Date(dto.fileModifiedAt));
+    }
+    await this.storageRepository.utimes(file.originalPath, new Date(), new Date(dto.fileModifiedAt));
+    await this.assetRepository.upsertExif({
+      exif: { assetId: asset.id, fileSizeInByte: file.size },
+      lockedPropertiesBehavior: 'override',
+    });
+
+    if (!options?.skipEventEmit) {
+      await this.eventRepository.emit('AssetCreate', { asset, file });
+    }
+
+    await this.jobRepository.queue({ name: JobName.AssetExtractMetadata, data: { id: asset.id, source: 'upload' } });
+
+    return asset;
   }
 
   private requireQuota(auth: AuthDto, size: number) {

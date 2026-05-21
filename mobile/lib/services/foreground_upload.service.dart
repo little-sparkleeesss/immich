@@ -6,18 +6,26 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/domain/models/asset/asset_metadata.model.dart';
 import 'package:immich_mobile/domain/models/asset/base_asset.model.dart';
 import 'package:immich_mobile/domain/models/store.model.dart';
+import 'package:immich_mobile/domain/services/edit_revert.service.dart';
 import 'package:immich_mobile/entities/store.entity.dart';
 import 'package:immich_mobile/extensions/network_capability_extensions.dart';
 import 'package:immich_mobile/extensions/platform_extensions.dart';
 import 'package:immich_mobile/extensions/translate_extensions.dart';
 import 'package:immich_mobile/infrastructure/repositories/backup.repository.dart';
+import 'package:immich_mobile/infrastructure/repositories/local_asset.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/settings.repository.dart';
+import 'package:immich_mobile/infrastructure/repositories/stack.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/storage.repository.dart';
 import 'package:immich_mobile/platform/connectivity_api.g.dart';
+import 'package:immich_mobile/platform/native_sync_api.g.dart';
+import 'package:immich_mobile/providers/infrastructure/asset.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/platform.provider.dart';
+import 'package:immich_mobile/providers/infrastructure/stack.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/storage.provider.dart';
+import 'package:immich_mobile/providers/infrastructure/sync.provider.dart';
 import 'package:immich_mobile/repositories/asset_media.repository.dart';
 import 'package:immich_mobile/repositories/upload.repository.dart';
+import 'package:immich_mobile/services/edit_pair.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:photo_manager/photo_manager.dart' show PMProgressHandler;
@@ -39,6 +47,10 @@ final foregroundUploadServiceProvider = Provider((ref) {
     ref.watch(backupRepositoryProvider),
     ref.watch(connectivityApiProvider),
     ref.watch(assetMediaRepositoryProvider),
+    ref.watch(nativeSyncApiProvider),
+    ref.watch(localAssetRepository),
+    ref.watch(editRevertServiceProvider),
+    ref.watch(driftStackProvider),
   );
 });
 
@@ -54,6 +66,10 @@ class ForegroundUploadService {
     this._backupRepository,
     this._connectivityApi,
     this._assetMediaRepository,
+    this._nativeSyncApi,
+    this._localAssetRepository,
+    this._editRevertService,
+    this._stackRepository,
   );
 
   final UploadRepository _uploadRepository;
@@ -61,6 +77,10 @@ class ForegroundUploadService {
   final DriftBackupRepository _backupRepository;
   final ConnectivityApi _connectivityApi;
   final AssetMediaRepository _assetMediaRepository;
+  final NativeSyncApi _nativeSyncApi;
+  final DriftLocalAssetRepository _localAssetRepository;
+  final EditRevertService _editRevertService;
+  final DriftStackRepository _stackRepository;
   final Logger _logger = Logger('ForegroundUploadService');
 
   bool shouldAbortUpload = false;
@@ -250,6 +270,16 @@ class ForegroundUploadService {
         return;
       }
 
+      // A reverted iOS edit flips the stack back to the original and skips the upload.
+      // Live photos don't go through the edit-pair flow, so skip the native probe.
+      if (CurrentPlatform.isIOS &&
+          !entity.isLivePhoto &&
+          asset.priorRemoteId != null &&
+          await _editRevertService.tryHandleRevert(asset)) {
+        callbacks.onSuccess?.call(asset.localId!, asset.priorRemoteId!);
+        return;
+      }
+
       final isAvailableLocally = await _storageRepository.isAssetAvailableLocally(asset.id);
 
       if (!isAvailableLocally && CurrentPlatform.isIOS) {
@@ -355,20 +385,27 @@ class ForegroundUploadService {
         fields['livePhotoVideoId'] = livePhotoVideoId;
       }
 
+      // Edit pair: upload the unedited original first and stack the edit onto it.
+      // Done before the edit's metadata is added below so the base isn't stamped
+      // with the edit's adjustmentTime.
+      if (!entity.isLivePhoto) {
+        final base = await _resolveStackParent(asset, Map.of(fields), cancelToken);
+        if (base.baseFailed) {
+          // The original couldn't be uploaded. Don't upload the edit on its own
+          // and mark it synced — that would permanently drop the original from
+          // backup. Leave the whole pair as a candidate to retry next cycle.
+          _logger.warning(() => "Base upload failed for ${asset.localId}, retrying the pair later");
+          return;
+        }
+        if (base.stackParentId != null) {
+          fields['stackParentId'] = base.stackParentId!;
+        }
+      }
+
       // Add cloudId metadata only to the still image, not the motion video, becasue when the sync id happens, the motion video can get associated with the wrong still image.
-      if (CurrentPlatform.isIOS && asset.cloudId != null) {
-        fields['metadata'] = jsonEncode([
-          RemoteAssetMetadataItem(
-            key: RemoteAssetMetadataKey.mobileApp,
-            value: RemoteAssetMobileAppMetadata(
-              cloudId: asset.cloudId,
-              createdAt: asset.createdAt.toIso8601String(),
-              adjustmentTime: asset.adjustmentTime?.toIso8601String(),
-              latitude: asset.latitude?.toString(),
-              longitude: asset.longitude?.toString(),
-            ),
-          ),
-        ]);
+      final metadata = _cloudMetadata(asset, includeAdjustment: true);
+      if (metadata != null) {
+        fields['metadata'] = metadata;
       }
 
       final onProgress = callbacks.onProgress;
@@ -384,6 +421,14 @@ class ForegroundUploadService {
       );
 
       if (result.isSuccess && result.remoteAssetId != null) {
+        unawaited(
+          _localAssetRepository
+              .markSynced(asset.localId!, priorRemoteId: result.remoteAssetId!, syncedChecksum: asset.checksum)
+              .catchError(
+                (Object error, StackTrace stack) =>
+                    _logger.warning(() => "Failed to mark ${asset.localId} synced", error, stack),
+              ),
+        );
         callbacks.onSuccess?.call(asset.localId!, result.remoteAssetId!);
       } else if (result.isCancelled) {
         _logger.warning(() => "Backup was cancelled by the user");
@@ -412,6 +457,71 @@ class ForegroundUploadService {
           _logger.severe(() => "ERROR deleting file: ${error.toString()}", stackTrace);
         }
       }
+    }
+  }
+
+  /// iOS still-image cloudId metadata as a JSON field, or null when there's
+  /// nothing to attach. The base resource omits adjustmentTime (it's the
+  /// unedited original); the edit includes it.
+  String? _cloudMetadata(LocalAsset asset, {required bool includeAdjustment}) {
+    if (!CurrentPlatform.isIOS || asset.cloudId == null) {
+      return null;
+    }
+    return jsonEncode([
+      RemoteAssetMetadataItem(
+        key: RemoteAssetMetadataKey.mobileApp,
+        value: RemoteAssetMobileAppMetadata(
+          cloudId: asset.cloudId,
+          createdAt: asset.createdAt.toIso8601String(),
+          adjustmentTime: includeAdjustment ? asset.adjustmentTime?.toIso8601String() : null,
+          latitude: asset.latitude?.toString(),
+          longitude: asset.longitude?.toString(),
+        ),
+      ),
+    ]);
+  }
+
+  /// For an edited iOS photo, uploads the original camera bytes so the edit can
+  /// stack onto it. See [_StackParent] for the outcome.
+  Future<_StackParent> _resolveStackParent(
+    LocalAsset asset,
+    Map<String, String> baseFields,
+    Completer<void>? cancelToken,
+  ) async {
+    if (!CurrentPlatform.isIOS) {
+      return const _StackParent.none();
+    }
+
+    final plan = await resolveEditPair(_nativeSyncApi, asset, stackRepository: _stackRepository, log: _logger);
+    switch (plan) {
+      case NoEditPair():
+        return const _StackParent.none();
+      case AbsorbIntoPrior(:final parentId):
+        return _StackParent.parent(parentId);
+      case UploadBaseFirst(:final base):
+        final baseFile = File(base.path);
+        try {
+          final fields = Map.of(baseFields);
+          final metadata = _cloudMetadata(asset, includeAdjustment: false);
+          if (metadata != null) {
+            fields['metadata'] = metadata;
+          }
+          final result = await _uploadRepository.uploadFile(
+            file: baseFile,
+            originalFileName: p.setExtension(asset.name, p.extension(base.path)),
+            fields: fields,
+            cancelToken: cancelToken,
+            logContext: 'baseResource[${asset.localId}]',
+          );
+          if (result.isSuccess && result.remoteAssetId != null) {
+            return _StackParent.parent(result.remoteAssetId!);
+          }
+          return const _StackParent.failed();
+        } finally {
+          try {
+            await baseFile.delete();
+          } catch (_) {}
+        }
     }
   }
 
@@ -460,4 +570,17 @@ class ForegroundUploadService {
     }
     return true;
   }
+}
+
+/// Outcome of resolving an edit's stack parent. [stackParentId] is the remote id
+/// to stack onto (null when the asset isn't an edit). [baseFailed] is true only
+/// when the original was found but its upload failed, so the edit must not be
+/// uploaded on its own.
+class _StackParent {
+  final String? stackParentId;
+  final bool baseFailed;
+
+  const _StackParent.none() : stackParentId = null, baseFailed = false;
+  const _StackParent.parent(String this.stackParentId) : baseFailed = false;
+  const _StackParent.failed() : stackParentId = null, baseFailed = true;
 }

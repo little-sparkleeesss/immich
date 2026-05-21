@@ -9,17 +9,24 @@ import 'package:immich_mobile/constants/constants.dart';
 import 'package:immich_mobile/domain/models/asset/asset_metadata.model.dart';
 import 'package:immich_mobile/domain/models/asset/base_asset.model.dart';
 import 'package:immich_mobile/domain/models/store.model.dart';
+import 'package:immich_mobile/domain/services/edit_revert.service.dart';
 import 'package:immich_mobile/entities/store.entity.dart';
 import 'package:immich_mobile/extensions/platform_extensions.dart';
 import 'package:immich_mobile/infrastructure/repositories/backup.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/local_asset.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/settings.repository.dart';
+import 'package:immich_mobile/infrastructure/repositories/stack.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/storage.repository.dart';
+import 'package:immich_mobile/platform/native_sync_api.g.dart';
 import 'package:immich_mobile/providers/infrastructure/asset.provider.dart';
+import 'package:immich_mobile/providers/infrastructure/platform.provider.dart';
+import 'package:immich_mobile/providers/infrastructure/stack.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/storage.provider.dart';
+import 'package:immich_mobile/providers/infrastructure/sync.provider.dart';
 import 'package:immich_mobile/repositories/asset_media.repository.dart';
 import 'package:immich_mobile/repositories/upload.repository.dart';
 import 'package:immich_mobile/services/api.service.dart';
+import 'package:immich_mobile/services/edit_pair.dart';
 import 'package:immich_mobile/utils/debug_print.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
@@ -31,6 +38,9 @@ final backgroundUploadServiceProvider = Provider((ref) {
     ref.watch(localAssetRepository),
     ref.watch(backupRepositoryProvider),
     ref.watch(assetMediaRepositoryProvider),
+    ref.watch(nativeSyncApiProvider),
+    ref.watch(editRevertServiceProvider),
+    ref.watch(driftStackProvider),
   );
 
   ref.onDispose(service.dispose);
@@ -43,13 +53,35 @@ class UploadTaskMetadata {
   final bool isLivePhotos;
   final String livePhotoVideoId;
 
-  const UploadTaskMetadata({required this.localAssetId, required this.isLivePhotos, required this.livePhotoVideoId});
+  // Marks the base upload of an edit pair. On completion the chained edit
+  // upload is enqueued with stackParentId = this base's remote id.
+  final bool isEditPair;
 
-  UploadTaskMetadata copyWith({String? localAssetId, bool? isLivePhotos, String? livePhotoVideoId}) {
+  // Path of the native temp file backing this task (the edit base), so it can
+  // be cleaned up on terminal status.
+  final String basePath;
+
+  const UploadTaskMetadata({
+    required this.localAssetId,
+    required this.isLivePhotos,
+    required this.livePhotoVideoId,
+    this.isEditPair = false,
+    this.basePath = '',
+  });
+
+  UploadTaskMetadata copyWith({
+    String? localAssetId,
+    bool? isLivePhotos,
+    String? livePhotoVideoId,
+    bool? isEditPair,
+    String? basePath,
+  }) {
     return UploadTaskMetadata(
       localAssetId: localAssetId ?? this.localAssetId,
       isLivePhotos: isLivePhotos ?? this.isLivePhotos,
       livePhotoVideoId: livePhotoVideoId ?? this.livePhotoVideoId,
+      isEditPair: isEditPair ?? this.isEditPair,
+      basePath: basePath ?? this.basePath,
     );
   }
 
@@ -58,6 +90,8 @@ class UploadTaskMetadata {
       'localAssetId': localAssetId,
       'isLivePhotos': isLivePhotos,
       'livePhotoVideoId': livePhotoVideoId,
+      'isEditPair': isEditPair,
+      'basePath': basePath,
     };
   }
 
@@ -66,6 +100,8 @@ class UploadTaskMetadata {
       localAssetId: map['localAssetId'] as String,
       isLivePhotos: map['isLivePhotos'] as bool,
       livePhotoVideoId: map['livePhotoVideoId'] as String,
+      isEditPair: (map['isEditPair'] as bool?) ?? false,
+      basePath: (map['basePath'] as String?) ?? '',
     );
   }
 
@@ -76,7 +112,7 @@ class UploadTaskMetadata {
 
   @override
   String toString() =>
-      'UploadTaskMetadata(localAssetId: $localAssetId, isLivePhotos: $isLivePhotos, livePhotoVideoId: $livePhotoVideoId)';
+      'UploadTaskMetadata(localAssetId: $localAssetId, isLivePhotos: $isLivePhotos, livePhotoVideoId: $livePhotoVideoId, isEditPair: $isEditPair, basePath: $basePath)';
 
   @override
   bool operator ==(covariant UploadTaskMetadata other) {
@@ -86,11 +122,18 @@ class UploadTaskMetadata {
 
     return other.localAssetId == localAssetId &&
         other.isLivePhotos == isLivePhotos &&
-        other.livePhotoVideoId == livePhotoVideoId;
+        other.livePhotoVideoId == livePhotoVideoId &&
+        other.isEditPair == isEditPair &&
+        other.basePath == basePath;
   }
 
   @override
-  int get hashCode => localAssetId.hashCode ^ isLivePhotos.hashCode ^ livePhotoVideoId.hashCode;
+  int get hashCode =>
+      localAssetId.hashCode ^
+      isLivePhotos.hashCode ^
+      livePhotoVideoId.hashCode ^
+      isEditPair.hashCode ^
+      basePath.hashCode;
 }
 
 /// Service for handling background uploads using iOS URLSession (background_downloader)
@@ -104,6 +147,9 @@ class BackgroundUploadService {
     this._localAssetRepository,
     this._backupRepository,
     this._assetMediaRepository,
+    this._nativeSyncApi,
+    this._editRevertService,
+    this._stackRepository,
   ) {
     _uploadRepository.onUploadStatus = _onUploadCallback;
     _uploadRepository.onTaskProgress = _onTaskProgressCallback;
@@ -114,6 +160,9 @@ class BackgroundUploadService {
   final DriftLocalAssetRepository _localAssetRepository;
   final DriftBackupRepository _backupRepository;
   final AssetMediaRepository _assetMediaRepository;
+  final NativeSyncApi _nativeSyncApi;
+  final EditRevertService _editRevertService;
+  final DriftStackRepository _stackRepository;
   final Logger _logger = Logger('BackgroundUploadService');
 
   final StreamController<TaskStatusUpdate> _taskStatusController = StreamController<TaskStatusUpdate>.broadcast();
@@ -193,10 +242,13 @@ class BackgroundUploadService {
 
     await _storageRepository.clearCache();
     await _uploadRepository.reset(kBackupGroup);
+    await _uploadRepository.reset(kBackupEditPairGroup);
     await _uploadRepository.deleteDatabaseRecords(kBackupGroup);
+    await _uploadRepository.deleteDatabaseRecords(kBackupEditPairGroup);
 
     final activeTasks = await _uploadRepository.getActiveTasks(kBackupGroup);
-    return activeTasks.length;
+    final activeEditTasks = await _uploadRepository.getActiveTasks(kBackupEditPairGroup);
+    return activeTasks.length + activeEditTasks.length;
   }
 
   /// Resume background backup processing
@@ -205,11 +257,25 @@ class BackgroundUploadService {
   }
 
   void _handleTaskStatusUpdate(TaskStatusUpdate update) async {
+    UploadTaskMetadata? metadata;
+    if (update.task.metaData.isNotEmpty) {
+      try {
+        metadata = UploadTaskMetadata.fromJson(update.task.metaData);
+      } catch (_) {
+        metadata = null;
+      }
+    }
+
     switch (update.status) {
       case TaskStatus.complete:
-        unawaited(_handleLivePhoto(update));
+        unawaited(_handleLivePhoto(update, metadata));
+        unawaited(handleEditPair(update, metadata));
+        unawaited(recordPriorRemoteIdOnSuccess(update, metadata));
 
-        if (CurrentPlatform.isIOS) {
+        // Edit-pair bases live in the native temp dir and are deleted by
+        // handleEditPair via metadata.basePath; deleting here too just races it
+        // and logs a spurious SEVERE on the loser.
+        if (CurrentPlatform.isIOS && !(metadata?.isEditPair ?? false)) {
           try {
             final path = await update.task.filePath();
             await File(path).delete();
@@ -220,19 +286,20 @@ class BackgroundUploadService {
 
         break;
 
+      case TaskStatus.failed:
+      case TaskStatus.canceled:
+      case TaskStatus.notFound:
+        unawaited(_cleanupTempResourceOnFailure(metadata));
+        break;
+
       default:
         break;
     }
   }
 
-  Future<void> _handleLivePhoto(TaskStatusUpdate update) async {
+  Future<void> _handleLivePhoto(TaskStatusUpdate update, UploadTaskMetadata? metadata) async {
     try {
-      if (update.task.metaData.isEmpty || update.task.metaData == '') {
-        return;
-      }
-
-      final metadata = UploadTaskMetadata.fromJson(update.task.metaData);
-      if (!metadata.isLivePhotos) {
+      if (metadata == null || !metadata.isLivePhotos) {
         return;
       }
 
@@ -258,12 +325,167 @@ class BackgroundUploadService {
     }
   }
 
+  /// When an edit-pair base upload finishes, enqueue the edit on top of it
+  /// (stackParentId = the base's new remote id).
+  @visibleForTesting
+  Future<void> handleEditPair(TaskStatusUpdate update, UploadTaskMetadata? metadata) async {
+    try {
+      if (metadata == null || !metadata.isEditPair) {
+        return;
+      }
+      if (metadata.basePath.isNotEmpty) {
+        try {
+          await File(metadata.basePath).delete();
+        } catch (_) {}
+      }
+      final baseRemoteId = _remoteIdFromResponse(update);
+      if (baseRemoteId == null) {
+        return;
+      }
+      final localAsset = await _localAssetRepository.getById(metadata.localAssetId);
+      if (localAsset == null) {
+        return;
+      }
+      final editTask = await getEditUploadTask(localAsset, baseRemoteId);
+      if (editTask != null) {
+        await enqueueTasks([editTask]);
+      }
+    } catch (error, stackTrace) {
+      dPrint(() => "Error handling edit pair task: $error $stackTrace");
+    }
+  }
+
+  /// Saves the uploaded remote id as the asset's priorRemoteId so a later edit
+  /// stacks onto it. Skipped for edit-pair base uploads; the chained edit records it.
+  @visibleForTesting
+  Future<void> recordPriorRemoteIdOnSuccess(TaskStatusUpdate update, UploadTaskMetadata? metadata) async {
+    try {
+      if (metadata == null || metadata.isEditPair || metadata.isLivePhotos || metadata.localAssetId.isEmpty) {
+        return;
+      }
+      final remoteId = _remoteIdFromResponse(update);
+      if (remoteId == null) {
+        return;
+      }
+      final localAsset = await _localAssetRepository.getById(metadata.localAssetId);
+      await _localAssetRepository.markSynced(
+        metadata.localAssetId,
+        priorRemoteId: remoteId,
+        syncedChecksum: localAsset?.checksum,
+      );
+    } catch (error, stackTrace) {
+      dPrint(() => "Error recording priorRemoteId: $error $stackTrace");
+    }
+  }
+
+  Future<void> _cleanupTempResourceOnFailure(UploadTaskMetadata? metadata) async {
+    if (metadata == null || metadata.basePath.isEmpty) {
+      return;
+    }
+    try {
+      await File(metadata.basePath).delete();
+    } catch (_) {}
+  }
+
+  /// The new asset's remote id from an upload's response body, or null if the
+  /// body is missing/malformed.
+  String? _remoteIdFromResponse(TaskStatusUpdate update) {
+    final body = update.responseBody;
+    if (body == null || body.isEmpty) {
+      return null;
+    }
+    try {
+      return jsonDecode(body)['id'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<UploadTask> _buildBaseUploadTask(LocalAsset asset, BaseResource base) async {
+    final metadata = UploadTaskMetadata(
+      localAssetId: asset.id,
+      isLivePhotos: false,
+      livePhotoVideoId: '',
+      isEditPair: true,
+      basePath: base.path,
+    ).toJson();
+
+    // The base is the unedited original (no adjustmentTime); the `_base`
+    // deviceAssetId keeps it distinct from the chained edit task.
+    return buildUploadTask(
+      File(base.path),
+      createdAt: asset.createdAt,
+      modifiedAt: asset.updatedAt,
+      originalFileName: p.setExtension(asset.name, p.extension(base.path)),
+      deviceAssetId: '${asset.id}_base',
+      metadata: metadata,
+      group: kBackupGroup,
+      isFavorite: asset.isFavorite,
+      requiresWiFi: _shouldRequireWiFi(asset),
+      cloudId: asset.cloudId,
+      latitude: asset.latitude?.toString(),
+      longitude: asset.longitude?.toString(),
+    );
+  }
+
+  @visibleForTesting
+  Future<UploadTask?> getEditUploadTask(LocalAsset asset, String stackParentId) async {
+    final entity = await _storageRepository.getAssetEntityForAsset(asset);
+    if (entity == null) {
+      return null;
+    }
+    final file = await _storageRepository.getFileForAsset(asset.id);
+    if (file == null) {
+      return null;
+    }
+
+    final fields = {'stackParentId': stackParentId};
+    final originalFileName = await _assetMediaRepository.getOriginalFilename(asset.id) ?? asset.name;
+    final metadata = UploadTaskMetadata(localAssetId: asset.id, isLivePhotos: false, livePhotoVideoId: '').toJson();
+
+    return buildUploadTask(
+      file,
+      createdAt: asset.createdAt,
+      modifiedAt: asset.updatedAt,
+      originalFileName: originalFileName,
+      deviceAssetId: asset.id,
+      metadata: metadata,
+      fields: fields,
+      group: kBackupEditPairGroup,
+      priority: 0,
+      isFavorite: asset.isFavorite,
+      requiresWiFi: _shouldRequireWiFi(asset),
+      cloudId: asset.cloudId,
+      adjustmentTime: asset.adjustmentTime?.toIso8601String(),
+      latitude: asset.latitude?.toString(),
+      longitude: asset.longitude?.toString(),
+    );
+  }
+
   @visibleForTesting
   Future<UploadTask?> getUploadTask(LocalAsset asset, {String group = kBackupGroup, int? priority}) async {
     final entity = await _storageRepository.getAssetEntityForAsset(asset);
     if (entity == null) {
       _logger.warning("Asset entity not found for ${asset.id} - ${asset.name}");
       return null;
+    }
+
+    // iOS edit pair: stack a user edit onto its original. resolveEditPair decides
+    // whether to reuse a prior upload or upload the base first. Live photos skip this.
+    if (!entity.isLivePhoto && CurrentPlatform.isIOS) {
+      // A reverted edit flips the stack back to the original and skips the upload.
+      if (asset.priorRemoteId != null && await _editRevertService.tryHandleRevert(asset)) {
+        return null;
+      }
+      final plan = await resolveEditPair(_nativeSyncApi, asset, stackRepository: _stackRepository, log: _logger);
+      switch (plan) {
+        case UploadBaseFirst(:final base):
+          return _buildBaseUploadTask(asset, base);
+        case AbsorbIntoPrior(:final parentId):
+          return getEditUploadTask(asset, parentId);
+        case NoEditPair():
+          break;
+      }
     }
 
     File? file;

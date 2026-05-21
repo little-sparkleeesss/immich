@@ -7,7 +7,13 @@ import 'local_album_asset.entity.dart';
 mergedAsset:
 SELECT
 	rae.id as remote_id,
-	(SELECT lae.id FROM local_asset_entity lae WHERE lae.checksum = rae.checksum LIMIT 1) as local_id,
+	-- local_id links a remote to its on-device copy, normally by checksum. A reverted iOS
+	-- edit re-encodes to fresh bytes so the checksum no longer matches, but its
+	-- prior_remote_id still points at this remote, so fall back to that.
+	COALESCE(
+		(SELECT lae.id FROM local_asset_entity lae WHERE lae.checksum = rae.checksum LIMIT 1),
+		(SELECT lae.id FROM local_asset_entity lae WHERE lae.prior_remote_id = rae.id LIMIT 1)
+	) as local_id,
 	rae.name,
 	rae."type",
 	rae.created_at as created_at,
@@ -83,6 +89,13 @@ AND NOT EXISTS (
     INNER JOIN local_album_entity la on laa.album_id = la.id
     WHERE laa.asset_id = lae.id AND la.backup_selection = 2 -- excluded
 )
+-- iOS edit-in-progress / revert: if this local was already uploaded (its
+-- prior_remote_id resolves to a live remote), hide the local tile so the remote
+-- (the edit, or the flipped-back original) is the single source of truth. Kills
+-- the transient 2-tile flicker and stops a reverted local from re-appearing.
+AND NOT EXISTS (
+	SELECT 1 FROM remote_asset_entity rae WHERE rae.id = lae.prior_remote_id AND rae.owner_id IN :user_ids AND rae.deleted_at IS NULL
+)
 ORDER BY created_at DESC
 LIMIT $limit;
 
@@ -135,6 +148,10 @@ FROM
 		SELECT 1 FROM local_album_asset_entity laa
 		INNER JOIN local_album_entity la on laa.album_id = la.id
 		WHERE laa.asset_id = lae.id AND la.backup_selection = 2 -- excluded
+	)
+	-- iOS edit-in-progress / revert: hide a local already represented by a live remote.
+	AND NOT EXISTS (
+		SELECT 1 FROM remote_asset_entity rae WHERE rae.id = lae.prior_remote_id AND rae.owner_id IN :user_ids AND rae.deleted_at IS NULL
 	)
 )
 GROUP BY bucket_date

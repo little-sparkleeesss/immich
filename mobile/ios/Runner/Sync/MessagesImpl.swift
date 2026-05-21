@@ -1,5 +1,6 @@
 import Photos
 import CryptoKit
+import UniformTypeIdentifiers
 
 struct AssetWrapper: Hashable, Equatable {
   let asset: PlatformAsset
@@ -419,4 +420,169 @@ class NativeSyncApiImpl: ImmichPlugin, NativeSyncApi, FlutterPlugin {
     }
     return mappings;
   }
+
+  func getBaseResource(
+    assetId: String,
+    allowNetworkAccess: Bool,
+    completion: @escaping (Result<BaseResource?, Error>) -> Void
+  ) {
+    Task { [weak self] in
+      guard let self = self else { return }
+
+      guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil).firstObject else {
+        return self.completeWhenActive(for: completion, with: .success(nil))
+      }
+
+      let resources = PHAssetResource.assetResources(for: asset)
+      let state = await Self.classifyEdit(resources: resources, allowNetworkAccess: allowNetworkAccess)
+      guard state == .edited, let original = resources.first(where: { $0.type == .photo }) else {
+        return self.completeWhenActive(for: completion, with: .success(nil))
+      }
+
+      do {
+        let result = try await self.streamBaseResource(
+          resource: original,
+          localId: asset.localIdentifier,
+          allowNetworkAccess: allowNetworkAccess
+        )
+        self.completeWhenActive(for: completion, with: .success(result))
+      } catch {
+        self.completeWhenActive(for: completion, with: .failure(error))
+      }
+    }
+  }
+
+  // Returns whether the asset carries a live Photos edit without reading the photo
+  // itself, only the small adjustment metadata. The revert probe relies on this to
+  // tell "not edited" apart from "couldn't read" (offloaded to iCloud), so it never
+  // mistakes an unreadable edit for a revert.
+  func getEditState(
+    assetId: String,
+    allowNetworkAccess: Bool,
+    completion: @escaping (Result<EditState, Error>) -> Void
+  ) {
+    Task { [weak self] in
+      guard let self = self else { return }
+      guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil).firstObject else {
+        // Not in the library, so don't answer "not edited" (the caller acts on that).
+        return self.completeWhenActive(for: completion, with: .success(.unknown))
+      }
+      let state = await Self.classifyEdit(
+        resources: PHAssetResource.assetResources(for: asset),
+        allowNetworkAccess: allowNetworkAccess
+      )
+      self.completeWhenActive(for: completion, with: .success(state))
+    }
+  }
+
+  // adjustmentRenderTypes for a photo with no real edit: a plain capture, a
+  // Photographic Style, or a reverted edit. A real edit changes this value.
+  private static let kNoEditRenderTypes = 27648
+
+  // Works out the edit state from Adjustments.plist only (never reads the photo).
+  // adjustmentRenderTypes is the signal: a real edit moves it off the baseline, while a
+  // plain capture, a Photographic Style, and a reverted edit all sit at the baseline. The
+  // editor id is NOT reliable: com.apple.camera authors both styles and some real edits
+  // (e.g. changing the Photographic Style after capture), so we key off the render types
+  // alone. Cleanup and object-removal write AdjustmentsSecondary.data, which we count as
+  // edited. unknown = couldn't read the plist (offloaded, no network).
+  private static func classifyEdit(resources: [PHAssetResource], allowNetworkAccess: Bool) async -> EditState {
+    if resources.contains(where: { $0.originalFilename == "AdjustmentsSecondary.data" }) {
+      return .edited
+    }
+    guard let adjRes = resources.first(where: { $0.originalFilename == "Adjustments.plist" }) else {
+      return .notEdited
+    }
+    guard let buf = await collectResourceData(adjRes, allowNetworkAccess: allowNetworkAccess),
+      let plist = try? PropertyListSerialization.propertyList(from: buf, options: [], format: nil) as? [String: Any]
+    else {
+      return .unknown
+    }
+    let renderTypes = (plist["adjustmentRenderTypes"] as? NSNumber)?.intValue
+    let isUserEdit = renderTypes != nil && renderTypes != kNoEditRenderTypes
+    return isUserEdit ? .edited : .notEdited
+  }
+
+  private func streamBaseResource(
+    resource: PHAssetResource,
+    localId: String,
+    allowNetworkAccess: Bool
+  ) async throws -> BaseResource {
+    let safeId = localId.replacingOccurrences(of: "/", with: "_")
+    let suffix = UTType(resource.uniformTypeIdentifier)?.preferredFilenameExtension ?? "bin"
+    let tempDir = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+      .appendingPathComponent("immich_base", isDirectory: true)
+    try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+    let unique = UUID().uuidString.prefix(8)
+    let tempUrl = tempDir.appendingPathComponent("\(safeId)_\(unique)_base.\(suffix)")
+
+    // Write the resource to disk and hash it chunk by chunk, so a big original (e.g.
+    // ProRAW) never sits fully in memory on the upload thread.
+    FileManager.default.createFile(atPath: tempUrl.path, contents: nil)
+    guard let handle = try? FileHandle(forWritingTo: tempUrl) else {
+      throw NSError(
+        domain: "NativeSyncApi",
+        code: -1,
+        userInfo: [NSLocalizedDescriptionKey: "Failed to open temp file for base resource \(localId)"]
+      )
+    }
+
+    var hasher = Insecure.SHA1()
+    var totalBytes: Int64 = 0
+    let options = PHAssetResourceRequestOptions()
+    options.isNetworkAccessAllowed = allowNetworkAccess
+
+    let succeeded = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+      var writeFailed = false
+      PHAssetResourceManager.default().requestData(
+        for: resource,
+        options: options,
+        dataReceivedHandler: { chunk in
+          if writeFailed { return }
+          do {
+            try handle.write(contentsOf: chunk)
+            hasher.update(data: chunk)
+            totalBytes += Int64(chunk.count)
+          } catch {
+            writeFailed = true
+          }
+        },
+        completionHandler: { error in continuation.resume(returning: error == nil && !writeFailed) }
+      )
+    }
+
+    try? handle.close()
+
+    guard succeeded else {
+      try? FileManager.default.removeItem(at: tempUrl)
+      throw NSError(
+        domain: "NativeSyncApi",
+        code: -1,
+        userInfo: [NSLocalizedDescriptionKey: "Failed to read base resource for \(localId)"]
+      )
+    }
+
+    let sha1 = Data(hasher.finalize()).base64EncodedString()
+    let mime = UTType(resource.uniformTypeIdentifier)?.preferredMIMEType ?? "application/octet-stream"
+    return BaseResource(path: tempUrl.path, sha1: sha1, sizeBytes: totalBytes, mimeType: mime)
+  }
+
+  private static func collectResourceData(
+    _ resource: PHAssetResource,
+    allowNetworkAccess: Bool
+  ) async -> Data? {
+    let options = PHAssetResourceRequestOptions()
+    options.isNetworkAccessAllowed = allowNetworkAccess
+    var buffer = Data()
+    return await withCheckedContinuation { (continuation: CheckedContinuation<Data?, Never>) in
+      PHAssetResourceManager.default().requestData(
+        for: resource,
+        options: options,
+        dataReceivedHandler: { data in buffer.append(data) },
+        completionHandler: { error in continuation.resume(returning: error == nil ? buffer : nil) }
+      )
+    }
+  }
+
 }

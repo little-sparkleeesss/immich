@@ -4,11 +4,14 @@ import 'package:mocktail/mocktail.dart' as mocktail;
 
 import '../domain/service.mock.dart';
 import '../infrastructure/repository.mock.dart';
+import '../repository.mocks.dart';
 
 class UnitMocks {
   final localAlbum = MockLocalAlbumRepository();
   final localAsset = MockDriftLocalAssetRepository();
   final trashedAsset = MockTrashedLocalAssetRepository();
+  final stack = MockDriftStackRepository();
+  final assetApi = MockAssetApiRepository();
 
   final nativeApi = MockNativeSyncApi();
 
@@ -31,6 +34,8 @@ class UnitMocks {
     mocktail.reset(localAlbum);
     mocktail.reset(localAsset);
     mocktail.reset(trashedAsset);
+    mocktail.reset(stack);
+    mocktail.reset(assetApi);
     mocktail.reset(nativeApi);
   }
 }

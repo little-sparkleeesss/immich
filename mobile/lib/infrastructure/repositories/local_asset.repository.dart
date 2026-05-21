@@ -64,6 +64,12 @@ class DriftLocalAssetRepository extends DriftDatabaseRepository {
     });
   }
 
+  Future<void> markSynced(String localId, {required String priorRemoteId, required String? syncedChecksum}) {
+    return (_db.localAssetEntity.update()..where((e) => e.id.equals(localId))).write(
+      LocalAssetEntityCompanion(priorRemoteId: Value(priorRemoteId), syncedChecksum: Value(syncedChecksum)),
+    );
+  }
+
   Future<void> delete(List<String> ids) {
     if (ids.isEmpty) {
       return Future.value();
