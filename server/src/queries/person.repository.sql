@@ -461,8 +461,52 @@ select
   "asset_face".*
 from
   "asset_face"
+  inner join "person" on "asset_face"."faceClusterId" = "person"."faceClusterId"
+  and "person"."id" = $1
 where
-  "asset_face"."faceClusterId" = $1
+  "asset_face"."assetId" in (
+    select
+      "asset"."id"
+    from
+      "asset"
+    where
+      (
+        "asset"."ownerId" = "person"."ownerId"
+        or exists (
+          select
+          from
+            "partner"
+          where
+            "partner"."sharedById" = "asset"."ownerId"
+            and "partner"."sharedWithId" = "person"."ownerId"
+            and (
+              $2 = any ("partner"."permissions")
+              or "partner"."permissions" @> $3
+            )
+        )
+        or exists (
+          select
+          from
+            "album_asset"
+            inner join "album_user" on "album_user"."albumId" = "album_asset"."albumId"
+            and "album_user"."userId" = "person"."ownerId"
+          where
+            "album_asset"."assetId" = "asset"."id"
+            and "album_user"."albumId" in (
+              select
+                "album_user"."albumId"
+              from
+                "album_user"
+              where
+                "album_user"."userId" = "asset"."ownerId"
+                and (
+                  $4 = any ("album_user"."permissions")
+                  or "album_user"."permissions" @> $5
+                )
+            )
+        )
+      )
+  )
   and "asset_face"."deletedAt" is null
   and "asset_face"."isVisible" is true
 

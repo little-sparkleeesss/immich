@@ -8,6 +8,7 @@ import {
   SelectQueryBuilder,
   ShallowDehydrateObject,
   sql,
+  StringReference,
   Updateable,
   UpdateResult,
 } from 'kysely';
@@ -214,6 +215,52 @@ export const hasAssetPermissions =
           ),
       ),
     ]);
+
+export const hasAssetPermissionsRef = <T extends keyof DB>(
+  eb: ExpressionBuilder<DB, 'asset'>,
+  userIdRef: StringReference<DB, 'asset' | T>,
+  permissions: SharingPermission[],
+  ignoreTimelineVisibility: boolean = false,
+) =>
+  eb.or([
+    eb('asset.ownerId', '=', eb.ref(userIdRef as never)),
+    eb.exists(
+      eb
+        .selectFrom('partner')
+        .whereRef('partner.sharedById', '=', 'asset.ownerId')
+        .whereRef('partner.sharedWithId', '=', userIdRef as never)
+        .where((eb) =>
+          eb.or([
+            eb(eb.val(SharingPermission.All), '=', eb.fn.any('partner.permissions')),
+            eb('partner.permissions', '@>', eb.val(permissions)),
+          ]),
+        )
+        .$if(!ignoreTimelineVisibility, (qb) => qb.where('partner.inTimeline', '=', true)),
+    ),
+    eb.exists(
+      eb
+        .selectFrom('album_asset')
+        .whereRef('album_asset.assetId', '=', 'asset.id')
+        .innerJoin('album_user', (join) =>
+          join
+            .onRef('album_user.albumId', '=', 'album_asset.albumId')
+            .onRef('album_user.userId', '=', userIdRef as never),
+        )
+        .$if(!ignoreTimelineVisibility, (qb) => qb.where('album_user.inTimeline', '=', true))
+        .where('album_user.albumId', 'in', (eb) =>
+          eb
+            .selectFrom('album_user')
+            .select('album_user.albumId')
+            .whereRef('album_user.userId', '=', 'asset.ownerId')
+            .where((eb) =>
+              eb.or([
+                eb(eb.val(SharingPermission.All), '=', eb.fn.any('album_user.permissions')),
+                eb('album_user.permissions', '@>', eb.val(permissions)),
+              ]),
+            ),
+        ),
+    ),
+  ]);
 
 @Injectable()
 export class AssetRepository {

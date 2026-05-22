@@ -1,5 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import e from 'express';
 import { Insertable, Updateable } from 'kysely';
 import { JOBS_ASSET_PAGINATION_SIZE } from 'src/constants';
 import { Person } from 'src/database';
@@ -557,16 +556,14 @@ export class PersonService extends BaseService {
         this.logger.warn(`Face ${id} does not have an embedding`);
         continue;
       }
-      if (face.asset.ownerId === userId) {
-        continue;
-      }
 
       let faceClusterId: string | null = null;
+      let personId: string | null = null;
       const matchWithPerson = await this.searchRepository.searchFaces({
         userIds: [face.asset.ownerId],
         embedding: face.faceSearch.embedding,
         maxDistance: machineLearning.facialRecognition.maxDistance,
-        numResults: 10,
+        numResults: 100,
         hasPerson: true,
         minBirthDate: new Date(face.asset.fileCreatedAt),
       });
@@ -579,11 +576,11 @@ export class PersonService extends BaseService {
           // TODO should probably be a DB constraint?
           const people = await this.personRepository.getByFaceClusterId(match.faceClusterId);
           if (!people.some((person) => person.ownerId === face.asset?.ownerId)) {
-            const person = await this.personRepository.create({
+            const { id } = await this.personRepository.create({
               ownerId: face.asset.ownerId,
               faceClusterId: match.faceClusterId,
             });
-            await this.createNewFeaturePhoto([person.id]);
+            personId = id;
           }
         }
 
@@ -600,16 +597,21 @@ export class PersonService extends BaseService {
         });
 
         const match = matches.find((match) => match.faceClusterId);
-        if (match && match.faceClusterId && face.asset.ownerId !== match.ownerId) {
+        if (
+          match &&
+          match.faceClusterId &&
+          face.asset.ownerId !== match.ownerId &&
+          matches.length >= machineLearning.facialRecognition.minFaces
+        ) {
           // TODO should probably be a DB constraint?
           const people = await this.personRepository.getByFaceClusterId(match.faceClusterId);
 
           if (!people.some((person) => person.ownerId === face.asset?.ownerId)) {
-            const person = await this.personRepository.create({
+            const { id } = await this.personRepository.create({
               ownerId: face.asset.ownerId,
               faceClusterId: match.faceClusterId,
             });
-            await this.createNewFeaturePhoto([person.id]);
+            personId = id;
           }
         }
 
@@ -619,6 +621,10 @@ export class PersonService extends BaseService {
       if (faceClusterId) {
         this.logger.log(`Assigning face ${id} to face cluster ${faceClusterId}`);
         await this.personRepository.reassignFaces({ faceIds: [id], newFaceClusterId: faceClusterId });
+      }
+
+      if (personId) {
+        await this.createNewFeaturePhoto([personId]);
       }
     }
 

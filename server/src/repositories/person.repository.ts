@@ -5,7 +5,7 @@ import { InjectKysely } from 'nestjs-kysely';
 import { AssetFace } from 'src/database';
 import { Chunked, ChunkedArray, DummyValue, GenerateSql } from 'src/decorators';
 import { AssetFileType, AssetVisibility, SharingPermission, SourceType } from 'src/enum';
-import { hasAssetPermissions } from 'src/repositories/asset.repository';
+import { hasAssetPermissions, hasAssetPermissionsRef } from 'src/repositories/asset.repository';
 import { DB } from 'src/schema';
 import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
@@ -557,7 +557,10 @@ export class PersonRepository {
         join.onRef('asset_face.faceClusterId', '=', 'person.faceClusterId').on('person.id', '=', personId),
       )
       .where('asset_face.assetId', 'in', (eb) =>
-        eb.selectFrom('asset').select('asset.id').whereRef('asset.ownerId', '=', 'person.ownerId'),
+        eb
+          .selectFrom('asset')
+          .select('asset.id')
+          .where((eb) => hasAssetPermissionsRef(eb, 'person.ownerId', [SharingPermission.AssetRead], true)),
       )
       .where('asset_face.deletedAt', 'is', null)
       .where('asset_face.isVisible', 'is', true)
