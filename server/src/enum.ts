@@ -1176,3 +1176,12 @@ export enum WorkflowType {
 }
 
 export const WorkflowTypeSchema = z.enum(WorkflowType).describe('Workflow type').meta({ id: 'WorkflowType' });
+
+export enum SearchOrderField {
+  FileCreatedAt = 'fileCreatedAt',
+  LocalDateTime = 'localDateTime',
+  FileSizeInBytes = 'fileSizeInBytes',
+  Rating = 'rating',
+}
+
+export const SearchOrderFieldSchema = z.enum(SearchOrderField).meta({ id: 'SearchOrderField' });
