@@ -279,7 +279,7 @@ const StringSimilarityFilterSchema = z
   })
   .meta({ id: 'StringSimilarityFilter' });
 
-const SearchOrderSchema = z
+export const SearchOrderSchema = z
   .strictObject({
     field: SearchOrderFieldSchema.default(SearchOrderField.FileCreatedAt),
     direction: AssetOrderSchema.default(AssetOrder.Desc),
@@ -323,7 +323,7 @@ const SearchFilterBranchSchema = z
   })
   .meta({ id: 'SearchFilterBranch' });
 
-const SearchFilterSchema = SearchFilterBranchSchema.extend({
+export const SearchFilterSchema = SearchFilterBranchSchema.extend({
   or: z.array(SearchFilterBranchSchema).min(1).optional(),
 }).meta({ id: 'SearchFilter' });
 
