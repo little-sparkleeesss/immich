@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { AuthDto } from 'src/dtos/auth.dto';
@@ -47,7 +47,7 @@ export class SessionController {
     return this.service.deleteAll(auth);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Authenticated({ permission: Permission.SessionUpdate })
   @Endpoint({
     summary: 'Update a session',
@@ -55,6 +55,25 @@ export class SessionController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateSession(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: SessionUpdateDto,
+  ): Promise<SessionResponseDto> {
+    return this.service.update(auth, id, dto);
+  }
+
+  @Put(':id')
+  @Authenticated({ permission: Permission.SessionUpdate })
+  @Endpoint({
+    summary: 'Update a session',
+    description: 'Update a specific session identified by id.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updateSession' }),
+  })
+  updateSessionLegacy(
     @Auth() auth: AuthDto,
     @Param() { id }: UUIDParamDto,
     @Body() dto: SessionUpdateDto,

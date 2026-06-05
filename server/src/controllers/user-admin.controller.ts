@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { AssetStatsDto, AssetStatsResponseDto } from 'src/dtos/asset.dto';
@@ -56,7 +56,7 @@ export class UserAdminController {
     return this.service.get(auth, id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Authenticated({ permission: Permission.AdminUserUpdate, admin: true })
   @Endpoint({
     summary: 'Update a user',
@@ -64,6 +64,25 @@ export class UserAdminController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateUserAdmin(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: UserAdminUpdateDto,
+  ): Promise<UserAdminResponseDto> {
+    return this.service.update(auth, id, dto);
+  }
+
+  @Put(':id')
+  @Authenticated({ permission: Permission.AdminUserUpdate, admin: true })
+  @Endpoint({
+    summary: 'Update a user',
+    description: 'Update an existing user.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updateUserAdmin' }),
+  })
+  updateUserAdminLegacy(
     @Auth() auth: AuthDto,
     @Param() { id }: UUIDParamDto,
     @Body() dto: UserAdminUpdateDto,
@@ -138,7 +157,7 @@ export class UserAdminController {
     return this.service.getPreferences(auth, id);
   }
 
-  @Put(':id/preferences')
+  @Patch(':id/preferences')
   @Authenticated({ permission: Permission.AdminUserUpdate, admin: true })
   @Endpoint({
     summary: 'Update user preferences',
@@ -146,6 +165,25 @@ export class UserAdminController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateUserPreferencesAdmin(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: UserPreferencesUpdateDto,
+  ): Promise<UserPreferencesResponseDto> {
+    return this.service.updatePreferences(auth, id, dto);
+  }
+
+  @Put(':id/preferences')
+  @Authenticated({ permission: Permission.AdminUserUpdate, admin: true })
+  @Endpoint({
+    summary: 'Update user preferences',
+    description: 'Update the preferences of a specific user.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updateUserPreferencesAdmin' }),
+  })
+  updateUserPreferencesAdminLegacy(
     @Auth() auth: AuthDto,
     @Param() { id }: UUIDParamDto,
     @Body() dto: UserPreferencesUpdateDto,

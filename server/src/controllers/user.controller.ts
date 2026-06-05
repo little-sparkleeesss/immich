@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Next,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -73,7 +74,7 @@ export class UserController {
     return this.service.getCalendarHeatmap(auth, dto);
   }
 
-  @Put('me')
+  @Patch('me')
   @Authenticated({ permission: Permission.UserUpdate })
   @Endpoint({
     summary: 'Update current user',
@@ -81,6 +82,21 @@ export class UserController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateMyUser(@Auth() auth: AuthDto, @Body() dto: UserUpdateMeDto): Promise<UserAdminResponseDto> {
+    return this.service.updateMe(auth, dto);
+  }
+
+  @Put('me')
+  @Authenticated({ permission: Permission.UserUpdate })
+  @Endpoint({
+    summary: 'Update current user',
+    description: 'Update the current user making the API request.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updateMyUser' }),
+  })
+  updateMyUserLegacy(@Auth() auth: AuthDto, @Body() dto: UserUpdateMeDto): Promise<UserAdminResponseDto> {
     return this.service.updateMe(auth, dto);
   }
 
@@ -95,7 +111,7 @@ export class UserController {
     return this.service.getMyPreferences(auth);
   }
 
-  @Put('me/preferences')
+  @Patch('me/preferences')
   @Authenticated({ permission: Permission.UserPreferenceUpdate })
   @Endpoint({
     summary: 'Update my preferences',
@@ -103,6 +119,24 @@ export class UserController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateMyPreferences(
+    @Auth() auth: AuthDto,
+    @Body() dto: UserPreferencesUpdateDto,
+  ): Promise<UserPreferencesResponseDto> {
+    return this.service.updateMyPreferences(auth, dto);
+  }
+
+  @Put('me/preferences')
+  @Authenticated({ permission: Permission.UserPreferenceUpdate })
+  @Endpoint({
+    summary: 'Update my preferences',
+    description: 'Update the preferences of the current user.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updateMyPreferences' }),
+  })
+  updateMyPreferencesLegacy(
     @Auth() auth: AuthDto,
     @Body() dto: UserPreferencesUpdateDto,
   ): Promise<UserPreferencesResponseDto> {

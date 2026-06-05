@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
@@ -76,7 +76,7 @@ export class TagController {
     return this.service.get(auth, id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Authenticated({ permission: Permission.TagUpdate })
   @Endpoint({
     summary: 'Update a tag',
@@ -84,6 +84,21 @@ export class TagController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateTag(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto, @Body() dto: TagUpdateDto): Promise<TagResponseDto> {
+    return this.service.update(auth, id, dto);
+  }
+
+  @Put(':id')
+  @Authenticated({ permission: Permission.TagUpdate })
+  @Endpoint({
+    summary: 'Update a tag',
+    description: 'Update an existing tag identified by its ID.',
+    history: new HistoryBuilder().added('v1').beta('v1').stable('v2').deprecated('v3', { replacementId: 'updateTag' }),
+  })
+  updateTagLegacy(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: TagUpdateDto,
+  ): Promise<TagResponseDto> {
     return this.service.update(auth, id, dto);
   }
 

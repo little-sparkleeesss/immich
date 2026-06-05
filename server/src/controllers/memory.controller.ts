@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
@@ -66,7 +66,7 @@ export class MemoryController {
     return this.service.get(auth, id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Authenticated({ permission: Permission.MemoryUpdate })
   @Endpoint({
     summary: 'Update a memory',
@@ -74,6 +74,25 @@ export class MemoryController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateMemory(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: MemoryUpdateDto,
+  ): Promise<MemoryResponseDto> {
+    return this.service.update(auth, id, dto);
+  }
+
+  @Put(':id')
+  @Authenticated({ permission: Permission.MemoryUpdate })
+  @Endpoint({
+    summary: 'Update a memory',
+    description: 'Update an existing memory by its ID.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updateMemory' }),
+  })
+  updateMemoryLegacy(
     @Auth() auth: AuthDto,
     @Param() { id }: UUIDParamDto,
     @Body() dto: MemoryUpdateDto,

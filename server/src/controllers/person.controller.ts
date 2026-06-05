@@ -7,6 +7,7 @@ import {
   HttpStatus,
   Next,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -101,7 +102,7 @@ export class PersonController {
     return this.service.getById(auth, id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Authenticated({ permission: Permission.PersonUpdate })
   @Endpoint({
     summary: 'Update person',
@@ -109,6 +110,25 @@ export class PersonController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updatePerson(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: PersonUpdateDto,
+  ): Promise<PersonResponseDto> {
+    return this.service.update(auth, id, dto);
+  }
+
+  @Put(':id')
+  @Authenticated({ permission: Permission.PersonUpdate })
+  @Endpoint({
+    summary: 'Update person',
+    description: 'Update an individual person.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updatePerson' }),
+  })
+  updatePersonLegacy(
     @Auth() auth: AuthDto,
     @Param() { id }: UUIDParamDto,
     @Body() dto: PersonUpdateDto,

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Endpoint, HistoryBuilder } from 'src/decorators';
 import { ApiKeyCreateDto, ApiKeyCreateResponseDto, ApiKeyResponseDto, ApiKeyUpdateDto } from 'src/dtos/api-key.dto';
@@ -57,7 +57,7 @@ export class ApiKeyController {
     return this.service.getById(auth, id);
   }
 
-  @Put(':id')
+  @Patch(':id')
   @Authenticated({ permission: Permission.ApiKeyUpdate })
   @Endpoint({
     summary: 'Update an API key',
@@ -65,6 +65,25 @@ export class ApiKeyController {
     history: new HistoryBuilder().added('v1').beta('v1').stable('v2'),
   })
   updateApiKey(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: ApiKeyUpdateDto,
+  ): Promise<ApiKeyResponseDto> {
+    return this.service.update(auth, id, dto);
+  }
+
+  @Put(':id')
+  @Authenticated({ permission: Permission.ApiKeyUpdate })
+  @Endpoint({
+    summary: 'Update an API key',
+    description: 'Updates the name and permissions of an API key by its ID. The current user must own this API key.',
+    history: new HistoryBuilder()
+      .added('v1')
+      .beta('v1')
+      .stable('v2')
+      .deprecated('v3', { replacementId: 'updateApiKey' }),
+  })
+  updateApiKeyLegacy(
     @Auth() auth: AuthDto,
     @Param() { id }: UUIDParamDto,
     @Body() dto: ApiKeyUpdateDto,
