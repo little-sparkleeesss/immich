@@ -421,7 +421,7 @@ class WorkflowsApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,

@@ -621,6 +621,29 @@ export type AssetBulkDeleteDto = {
     /** IDs to process */
     ids: string[];
 };
+export type AssetBulkUpdateDto = {
+    /** Original date and time */
+    dateTimeOriginal?: string;
+    /** Relative time offset in seconds */
+    dateTimeRelative?: number;
+    /** Asset description */
+    description?: string;
+    /** Duplicate ID */
+    duplicateId?: string | null;
+    /** Asset IDs to update */
+    ids: string[];
+    /** Mark as favorite */
+    isFavorite?: boolean;
+    /** Latitude coordinate */
+    latitude?: number;
+    /** Longitude coordinate */
+    longitude?: number;
+    /** Rating in range [1-5], or null for unrated */
+    rating?: number | null;
+    /** Time zone (IANA timezone) */
+    timeZone?: string;
+    visibility?: AssetVisibility;
+};
 export type AssetMetadataUpsertItemDto = {
     /** Metadata key */
     key: string;
@@ -654,29 +677,6 @@ export type AssetMediaResponseDto = {
     /** Asset media ID */
     id: string;
     status: AssetMediaStatus;
-};
-export type AssetBulkUpdateDto = {
-    /** Original date and time */
-    dateTimeOriginal?: string;
-    /** Relative time offset in seconds */
-    dateTimeRelative?: number;
-    /** Asset description */
-    description?: string;
-    /** Duplicate ID */
-    duplicateId?: string | null;
-    /** Asset IDs to update */
-    ids: string[];
-    /** Mark as favorite */
-    isFavorite?: boolean;
-    /** Latitude coordinate */
-    latitude?: number;
-    /** Longitude coordinate */
-    longitude?: number;
-    /** Rating in range [1-5], or null for unrated */
-    rating?: number | null;
-    /** Time zone (IANA timezone) */
-    timeZone?: string;
-    visibility?: AssetVisibility;
 };
 export type AssetBulkUploadCheckItem = {
     /** Base64 or hex encoded SHA1 hash */
@@ -3592,6 +3592,22 @@ export function updateUserAdmin({ id, userAdminUpdateDto }: {
         data: UserAdminResponseDto;
     }>(`/admin/users/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
+        method: "PATCH",
+        body: userAdminUpdateDto
+    })));
+}
+/**
+ * Update a user
+ */
+export function updateUserAdminLegacy({ id, userAdminUpdateDto }: {
+    id: string;
+    userAdminUpdateDto: UserAdminUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: UserAdminResponseDto;
+    }>(`/admin/users/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
         method: "PUT",
         body: userAdminUpdateDto
     })));
@@ -3633,6 +3649,22 @@ export function getUserPreferencesAdmin({ id }: {
  * Update user preferences
  */
 export function updateUserPreferencesAdmin({ id, userPreferencesUpdateDto }: {
+    id: string;
+    userPreferencesUpdateDto: UserPreferencesUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: UserPreferencesResponseDto;
+    }>(`/admin/users/${encodeURIComponent(id)}/preferences`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: userPreferencesUpdateDto
+    })));
+}
+/**
+ * Update user preferences
+ */
+export function updateUserPreferencesAdminLegacy({ id, userPreferencesUpdateDto }: {
     id: string;
     userPreferencesUpdateDto: UserPreferencesUpdateDto;
 }, opts?: Oazapfts.RequestOpts) {
@@ -3966,6 +3998,22 @@ export function updateApiKey({ id, apiKeyUpdateDto }: {
         data: ApiKeyResponseDto;
     }>(`/api-keys/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
+        method: "PATCH",
+        body: apiKeyUpdateDto
+    })));
+}
+/**
+ * Update an API key
+ */
+export function updateApiKeyLegacy({ id, apiKeyUpdateDto }: {
+    id: string;
+    apiKeyUpdateDto: ApiKeyUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: ApiKeyResponseDto;
+    }>(`/api-keys/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
         method: "PUT",
         body: apiKeyUpdateDto
     })));
@@ -3980,6 +4028,18 @@ export function deleteAssets({ assetBulkDeleteDto }: {
         ...opts,
         method: "DELETE",
         body: assetBulkDeleteDto
+    })));
+}
+/**
+ * Update assets
+ */
+export function updateAssets({ assetBulkUpdateDto }: {
+    assetBulkUpdateDto: AssetBulkUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchText("/assets", oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: assetBulkUpdateDto
     })));
 }
 /**
@@ -4012,7 +4072,7 @@ export function uploadAsset({ key, slug, xImmichChecksum, assetMediaCreateDto }:
 /**
  * Update assets
  */
-export function updateAssets({ assetBulkUpdateDto }: {
+export function updateAssetsLegacy({ assetBulkUpdateDto }: {
     assetBulkUpdateDto: AssetBulkUpdateDto;
 }, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchText("/assets", oazapfts.json({
@@ -4128,6 +4188,22 @@ export function getAssetInfo({ id, key, slug }: {
  * Update an asset
  */
 export function updateAsset({ id, updateAssetDto }: {
+    id: string;
+    updateAssetDto: UpdateAssetDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: AssetResponseDto;
+    }>(`/assets/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: updateAssetDto
+    })));
+}
+/**
+ * Update an asset
+ */
+export function updateAssetLegacy({ id, updateAssetDto }: {
     id: string;
     updateAssetDto: UpdateAssetDto;
 }, opts?: Oazapfts.RequestOpts) {
@@ -4767,6 +4843,22 @@ export function updateLibrary({ id, updateLibraryDto }: {
         data: LibraryResponseDto;
     }>(`/libraries/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
+        method: "PATCH",
+        body: updateLibraryDto
+    })));
+}
+/**
+ * Update a library
+ */
+export function updateLibraryLegacy({ id, updateLibraryDto }: {
+    id: string;
+    updateLibraryDto: UpdateLibraryDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: LibraryResponseDto;
+    }>(`/libraries/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
         method: "PUT",
         body: updateLibraryDto
     })));
@@ -4946,6 +5038,22 @@ export function getMemory({ id }: {
  * Update a memory
  */
 export function updateMemory({ id, memoryUpdateDto }: {
+    id: string;
+    memoryUpdateDto: MemoryUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: MemoryResponseDto;
+    }>(`/memories/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: memoryUpdateDto
+    })));
+}
+/**
+ * Update a memory
+ */
+export function updateMemoryLegacy({ id, memoryUpdateDto }: {
     id: string;
     memoryUpdateDto: MemoryUpdateDto;
 }, opts?: Oazapfts.RequestOpts) {
@@ -5316,6 +5424,22 @@ export function getPerson({ id }: {
  * Update person
  */
 export function updatePerson({ id, personUpdateDto }: {
+    id: string;
+    personUpdateDto: PersonUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: PersonResponseDto;
+    }>(`/people/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: personUpdateDto
+    })));
+}
+/**
+ * Update person
+ */
+export function updatePersonLegacy({ id, personUpdateDto }: {
     id: string;
     personUpdateDto: PersonUpdateDto;
 }, opts?: Oazapfts.RequestOpts) {
@@ -5968,6 +6092,22 @@ export function updateSession({ id, sessionUpdateDto }: {
         data: SessionResponseDto;
     }>(`/sessions/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
+        method: "PATCH",
+        body: sessionUpdateDto
+    })));
+}
+/**
+ * Update a session
+ */
+export function updateSessionLegacy({ id, sessionUpdateDto }: {
+    id: string;
+    sessionUpdateDto: SessionUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: SessionResponseDto;
+    }>(`/sessions/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
         method: "PUT",
         body: sessionUpdateDto
     })));
@@ -6194,6 +6334,22 @@ export function getStack({ id }: {
  * Update a stack
  */
 export function updateStack({ id, stackUpdateDto }: {
+    id: string;
+    stackUpdateDto: StackUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: StackResponseDto;
+    }>(`/stacks/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: stackUpdateDto
+    })));
+}
+/**
+ * Update a stack
+ */
+export function updateStackLegacy({ id, stackUpdateDto }: {
     id: string;
     stackUpdateDto: StackUpdateDto;
 }, opts?: Oazapfts.RequestOpts) {
@@ -6450,6 +6606,22 @@ export function updateTag({ id, tagUpdateDto }: {
         data: TagResponseDto;
     }>(`/tags/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
+        method: "PATCH",
+        body: tagUpdateDto
+    })));
+}
+/**
+ * Update a tag
+ */
+export function updateTagLegacy({ id, tagUpdateDto }: {
+    id: string;
+    tagUpdateDto: TagUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: TagResponseDto;
+    }>(`/tags/${encodeURIComponent(id)}`, oazapfts.json({
+        ...opts,
         method: "PUT",
         body: tagUpdateDto
     })));
@@ -6646,6 +6818,21 @@ export function updateMyUser({ userUpdateMeDto }: {
         data: UserAdminResponseDto;
     }>("/users/me", oazapfts.json({
         ...opts,
+        method: "PATCH",
+        body: userUpdateMeDto
+    })));
+}
+/**
+ * Update current user
+ */
+export function updateMyUserLegacy({ userUpdateMeDto }: {
+    userUpdateMeDto: UserUpdateMeDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: UserAdminResponseDto;
+    }>("/users/me", oazapfts.json({
+        ...opts,
         method: "PUT",
         body: userUpdateMeDto
     })));
@@ -6754,6 +6941,21 @@ export function getMyPreferences(opts?: Oazapfts.RequestOpts) {
  * Update my preferences
  */
 export function updateMyPreferences({ userPreferencesUpdateDto }: {
+    userPreferencesUpdateDto: UserPreferencesUpdateDto;
+}, opts?: Oazapfts.RequestOpts) {
+    return oazapfts.ok(oazapfts.fetchJson<{
+        status: 200;
+        data: UserPreferencesResponseDto;
+    }>("/users/me/preferences", oazapfts.json({
+        ...opts,
+        method: "PATCH",
+        body: userPreferencesUpdateDto
+    })));
+}
+/**
+ * Update my preferences
+ */
+export function updateMyPreferencesLegacy({ userPreferencesUpdateDto }: {
     userPreferencesUpdateDto: UserPreferencesUpdateDto;
 }, opts?: Oazapfts.RequestOpts) {
     return oazapfts.ok(oazapfts.fetchJson<{
@@ -6926,7 +7128,7 @@ export function updateWorkflow({ id, workflowUpdateDto }: {
         data: WorkflowResponseDto;
     }>(`/workflows/${encodeURIComponent(id)}`, oazapfts.json({
         ...opts,
-        method: "PUT",
+        method: "PATCH",
         body: workflowUpdateDto
     })));
 }

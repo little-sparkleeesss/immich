@@ -1336,7 +1336,7 @@ class AssetsApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -1357,6 +1357,68 @@ class AssetsApi {
   /// * [UpdateAssetDto] updateAssetDto (required):
   Future<AssetResponseDto?> updateAsset(String id, UpdateAssetDto updateAssetDto, { Future<void>? abortTrigger, }) async {
     final response = await updateAssetWithHttpInfo(id, updateAssetDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AssetResponseDto',) as AssetResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update an asset
+  ///
+  /// Update information of a specific asset.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UpdateAssetDto] updateAssetDto (required):
+  Future<Response> updateAssetLegacyWithHttpInfo(String id, UpdateAssetDto updateAssetDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/assets/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = updateAssetDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update an asset
+  ///
+  /// Update information of a specific asset.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UpdateAssetDto] updateAssetDto (required):
+  Future<AssetResponseDto?> updateAssetLegacy(String id, UpdateAssetDto updateAssetDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateAssetLegacyWithHttpInfo(id, updateAssetDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -1460,7 +1522,7 @@ class AssetsApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -1479,6 +1541,55 @@ class AssetsApi {
   /// * [AssetBulkUpdateDto] assetBulkUpdateDto (required):
   Future<void> updateAssets(AssetBulkUpdateDto assetBulkUpdateDto, { Future<void>? abortTrigger, }) async {
     final response = await updateAssetsWithHttpInfo(assetBulkUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+  }
+
+  /// Update assets
+  ///
+  /// Updates multiple assets at the same time.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [AssetBulkUpdateDto] assetBulkUpdateDto (required):
+  Future<Response> updateAssetsLegacyWithHttpInfo(AssetBulkUpdateDto assetBulkUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/assets';
+
+    // ignore: prefer_final_locals
+    Object? postBody = assetBulkUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update assets
+  ///
+  /// Updates multiple assets at the same time.
+  ///
+  /// Parameters:
+  ///
+  /// * [AssetBulkUpdateDto] assetBulkUpdateDto (required):
+  Future<void> updateAssetsLegacy(AssetBulkUpdateDto assetBulkUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateAssetsLegacyWithHttpInfo(assetBulkUpdateDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

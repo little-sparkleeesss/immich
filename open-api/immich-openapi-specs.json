@@ -1193,7 +1193,7 @@
         "x-immich-permission": "adminUser.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update an existing user.",
         "operationId": "updateUserAdmin",
         "parameters": [
@@ -1262,6 +1262,83 @@
         ],
         "x-immich-permission": "adminUser.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update an existing user.",
+        "operationId": "updateUserAdminLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserAdminUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAdminResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update a user",
+        "tags": [
+          "Users (admin)",
+          "Deprecated"
+        ],
+        "x-immich-admin-only": true,
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateUserAdmin"
+          }
+        ],
+        "x-immich-permission": "adminUser.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/admin/users/{id}/calendar-heatmap": {
@@ -1415,7 +1492,7 @@
         "x-immich-permission": "adminUser.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update the preferences of a specific user.",
         "operationId": "updateUserPreferencesAdmin",
         "parameters": [
@@ -1484,6 +1561,83 @@
         ],
         "x-immich-permission": "adminUser.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update the preferences of a specific user.",
+        "operationId": "updateUserPreferencesAdminLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferencesUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferencesResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update user preferences",
+        "tags": [
+          "Users (admin)",
+          "Deprecated"
+        ],
+        "x-immich-admin-only": true,
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateUserPreferencesAdmin"
+          }
+        ],
+        "x-immich-permission": "adminUser.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/admin/users/{id}/restore": {
@@ -2862,7 +3016,7 @@
         "x-immich-permission": "apiKey.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Updates the name and permissions of an API key by its ID. The current user must own this API key.",
         "operationId": "updateApiKey",
         "parameters": [
@@ -2930,6 +3084,82 @@
         ],
         "x-immich-permission": "apiKey.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Updates the name and permissions of an API key by its ID. The current user must own this API key.",
+        "operationId": "updateApiKeyLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiKeyUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiKeyResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update an API key",
+        "tags": [
+          "API keys",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateApiKey"
+          }
+        ],
+        "x-immich-permission": "apiKey.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/assets": {
@@ -2982,6 +3212,57 @@
           }
         ],
         "x-immich-permission": "asset.delete",
+        "x-immich-state": "Stable"
+      },
+      "patch": {
+        "description": "Updates multiple assets at the same time.",
+        "operationId": "updateAssets",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssetBulkUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update assets",
+        "tags": [
+          "Assets"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          }
+        ],
+        "x-immich-permission": "asset.update",
         "x-immich-state": "Stable"
       },
       "post": {
@@ -3080,8 +3361,9 @@
         "x-immich-state": "Stable"
       },
       "put": {
+        "deprecated": true,
         "description": "Updates multiple assets at the same time.",
-        "operationId": "updateAssets",
+        "operationId": "updateAssetsLegacy",
         "parameters": [],
         "requestBody": {
           "content": {
@@ -3111,7 +3393,8 @@
         ],
         "summary": "Update assets",
         "tags": [
-          "Assets"
+          "Assets",
+          "Deprecated"
         ],
         "x-immich-history": [
           {
@@ -3125,10 +3408,15 @@
           {
             "version": "v2",
             "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateAssets"
           }
         ],
         "x-immich-permission": "asset.update",
-        "x-immich-state": "Stable"
+        "x-immich-state": "Deprecated"
       }
     },
     "/assets/bulk-upload-check": {
@@ -3556,7 +3844,7 @@
         "x-immich-permission": "asset.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update information of a specific asset.",
         "operationId": "updateAsset",
         "parameters": [
@@ -3624,6 +3912,82 @@
         ],
         "x-immich-permission": "asset.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update information of a specific asset.",
+        "operationId": "updateAssetLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAssetDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update an asset",
+        "tags": [
+          "Assets",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateAsset"
+          }
+        ],
+        "x-immich-permission": "asset.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/assets/{id}/edits": {
@@ -6328,7 +6692,7 @@
         "x-immich-permission": "library.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update an existing external library.",
         "operationId": "updateLibrary",
         "parameters": [
@@ -6397,6 +6761,83 @@
         ],
         "x-immich-permission": "library.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update an existing external library.",
+        "operationId": "updateLibraryLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLibraryDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update a library",
+        "tags": [
+          "Libraries",
+          "Deprecated"
+        ],
+        "x-immich-admin-only": true,
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateLibrary"
+          }
+        ],
+        "x-immich-permission": "library.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/libraries/{id}/scan": {
@@ -7164,7 +7605,7 @@
         "x-immich-permission": "memory.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update an existing memory by its ID.",
         "operationId": "updateMemory",
         "parameters": [
@@ -7232,6 +7673,82 @@
         ],
         "x-immich-permission": "memory.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update an existing memory by its ID.",
+        "operationId": "updateMemoryLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemoryUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update a memory",
+        "tags": [
+          "Memories",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateMemory"
+          }
+        ],
+        "x-immich-permission": "memory.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/memories/{id}/assets": {
@@ -8710,7 +9227,7 @@
         "x-immich-permission": "person.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update an individual person.",
         "operationId": "updatePerson",
         "parameters": [
@@ -8778,6 +9295,82 @@
         ],
         "x-immich-permission": "person.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update an individual person.",
+        "operationId": "updatePersonLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update person",
+        "tags": [
+          "People",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updatePerson"
+          }
+        ],
+        "x-immich-permission": "person.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/people/{id}/merge": {
@@ -11528,7 +12121,7 @@
         "x-immich-permission": "session.delete",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update a specific session identified by id.",
         "operationId": "updateSession",
         "parameters": [
@@ -11596,6 +12189,82 @@
         ],
         "x-immich-permission": "session.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update a specific session identified by id.",
+        "operationId": "updateSessionLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update a session",
+        "tags": [
+          "Sessions",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateSession"
+          }
+        ],
+        "x-immich-permission": "session.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/sessions/{id}/lock": {
@@ -12544,7 +13213,7 @@
         "x-immich-permission": "stack.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update an existing stack by its ID.",
         "operationId": "updateStack",
         "parameters": [
@@ -12612,6 +13281,82 @@
         ],
         "x-immich-permission": "stack.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update an existing stack by its ID.",
+        "operationId": "updateStackLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StackUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StackResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update a stack",
+        "tags": [
+          "Stacks",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateStack"
+          }
+        ],
+        "x-immich-permission": "stack.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/stacks/{id}/assets/{assetId}": {
@@ -13647,7 +14392,7 @@
         "x-immich-permission": "tag.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update an existing tag identified by its ID.",
         "operationId": "updateTag",
         "parameters": [
@@ -13715,6 +14460,82 @@
         ],
         "x-immich-permission": "tag.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update an existing tag identified by its ID.",
+        "operationId": "updateTagLegacy",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update a tag",
+        "tags": [
+          "Tags",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateTag"
+          }
+        ],
+        "x-immich-permission": "tag.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/tags/{id}/assets": {
@@ -14516,7 +15337,7 @@
         "x-immich-permission": "user.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update the current user making the API request.",
         "operationId": "updateMyUser",
         "parameters": [],
@@ -14573,6 +15394,71 @@
         ],
         "x-immich-permission": "user.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update the current user making the API request.",
+        "operationId": "updateMyUserLegacy",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserUpdateMeDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserAdminResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update current user",
+        "tags": [
+          "Users",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateMyUser"
+          }
+        ],
+        "x-immich-permission": "user.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/users/me/calendar-heatmap": {
@@ -15002,7 +15888,7 @@
         "x-immich-permission": "userPreference.read",
         "x-immich-state": "Stable"
       },
-      "put": {
+      "patch": {
         "description": "Update the preferences of the current user.",
         "operationId": "updateMyPreferences",
         "parameters": [],
@@ -15059,6 +15945,71 @@
         ],
         "x-immich-permission": "userPreference.update",
         "x-immich-state": "Stable"
+      },
+      "put": {
+        "deprecated": true,
+        "description": "Update the preferences of the current user.",
+        "operationId": "updateMyPreferencesLegacy",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserPreferencesUpdateDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferencesResponseDto"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "cookie": []
+          },
+          {
+            "api_key": []
+          }
+        ],
+        "summary": "Update my preferences",
+        "tags": [
+          "Users",
+          "Deprecated"
+        ],
+        "x-immich-history": [
+          {
+            "version": "v1",
+            "state": "Added"
+          },
+          {
+            "version": "v1",
+            "state": "Beta"
+          },
+          {
+            "version": "v2",
+            "state": "Stable"
+          },
+          {
+            "version": "v3",
+            "state": "Deprecated",
+            "replacementId": "updateMyPreferences"
+          }
+        ],
+        "x-immich-permission": "userPreference.update",
+        "x-immich-state": "Deprecated"
       }
     },
     "/users/profile-image": {
@@ -15679,7 +16630,7 @@
         ],
         "x-immich-permission": "workflow.read"
       },
-      "put": {
+      "patch": {
         "description": "Update the information of a specific workflow by its ID. This endpoint can be used to update the workflow name, description, trigger type, filters and actions order, etc.",
         "operationId": "updateWorkflow",
         "parameters": [

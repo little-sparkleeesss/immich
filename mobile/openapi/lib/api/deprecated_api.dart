@@ -184,4 +184,787 @@ class DeprecatedApi {
     }
     return null;
   }
+
+  /// Update an API key
+  ///
+  /// Updates the name and permissions of an API key by its ID. The current user must own this API key.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ApiKeyUpdateDto] apiKeyUpdateDto (required):
+  Future<Response> updateApiKeyLegacyWithHttpInfo(String id, ApiKeyUpdateDto apiKeyUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/api-keys/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = apiKeyUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update an API key
+  ///
+  /// Updates the name and permissions of an API key by its ID. The current user must own this API key.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ApiKeyUpdateDto] apiKeyUpdateDto (required):
+  Future<ApiKeyResponseDto?> updateApiKeyLegacy(String id, ApiKeyUpdateDto apiKeyUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateApiKeyLegacyWithHttpInfo(id, apiKeyUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'ApiKeyResponseDto',) as ApiKeyResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update an asset
+  ///
+  /// Update information of a specific asset.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UpdateAssetDto] updateAssetDto (required):
+  Future<Response> updateAssetLegacyWithHttpInfo(String id, UpdateAssetDto updateAssetDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/assets/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = updateAssetDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update an asset
+  ///
+  /// Update information of a specific asset.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UpdateAssetDto] updateAssetDto (required):
+  Future<AssetResponseDto?> updateAssetLegacy(String id, UpdateAssetDto updateAssetDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateAssetLegacyWithHttpInfo(id, updateAssetDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'AssetResponseDto',) as AssetResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update assets
+  ///
+  /// Updates multiple assets at the same time.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [AssetBulkUpdateDto] assetBulkUpdateDto (required):
+  Future<Response> updateAssetsLegacyWithHttpInfo(AssetBulkUpdateDto assetBulkUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/assets';
+
+    // ignore: prefer_final_locals
+    Object? postBody = assetBulkUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update assets
+  ///
+  /// Updates multiple assets at the same time.
+  ///
+  /// Parameters:
+  ///
+  /// * [AssetBulkUpdateDto] assetBulkUpdateDto (required):
+  Future<void> updateAssetsLegacy(AssetBulkUpdateDto assetBulkUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateAssetsLegacyWithHttpInfo(assetBulkUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+  }
+
+  /// Update a library
+  ///
+  /// Update an existing external library.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UpdateLibraryDto] updateLibraryDto (required):
+  Future<Response> updateLibraryLegacyWithHttpInfo(String id, UpdateLibraryDto updateLibraryDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/libraries/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = updateLibraryDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a library
+  ///
+  /// Update an existing external library.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UpdateLibraryDto] updateLibraryDto (required):
+  Future<LibraryResponseDto?> updateLibraryLegacy(String id, UpdateLibraryDto updateLibraryDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateLibraryLegacyWithHttpInfo(id, updateLibraryDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'LibraryResponseDto',) as LibraryResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update a memory
+  ///
+  /// Update an existing memory by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [MemoryUpdateDto] memoryUpdateDto (required):
+  Future<Response> updateMemoryLegacyWithHttpInfo(String id, MemoryUpdateDto memoryUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/memories/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = memoryUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a memory
+  ///
+  /// Update an existing memory by its ID.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [MemoryUpdateDto] memoryUpdateDto (required):
+  Future<MemoryResponseDto?> updateMemoryLegacy(String id, MemoryUpdateDto memoryUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateMemoryLegacyWithHttpInfo(id, memoryUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'MemoryResponseDto',) as MemoryResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update my preferences
+  ///
+  /// Update the preferences of the current user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<Response> updateMyPreferencesLegacyWithHttpInfo(UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/users/me/preferences';
+
+    // ignore: prefer_final_locals
+    Object? postBody = userPreferencesUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update my preferences
+  ///
+  /// Update the preferences of the current user.
+  ///
+  /// Parameters:
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<UserPreferencesResponseDto?> updateMyPreferencesLegacy(UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateMyPreferencesLegacyWithHttpInfo(userPreferencesUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserPreferencesResponseDto',) as UserPreferencesResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update current user
+  ///
+  /// Update the current user making the API request.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [UserUpdateMeDto] userUpdateMeDto (required):
+  Future<Response> updateMyUserLegacyWithHttpInfo(UserUpdateMeDto userUpdateMeDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/users/me';
+
+    // ignore: prefer_final_locals
+    Object? postBody = userUpdateMeDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update current user
+  ///
+  /// Update the current user making the API request.
+  ///
+  /// Parameters:
+  ///
+  /// * [UserUpdateMeDto] userUpdateMeDto (required):
+  Future<UserAdminResponseDto?> updateMyUserLegacy(UserUpdateMeDto userUpdateMeDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateMyUserLegacyWithHttpInfo(userUpdateMeDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserAdminResponseDto',) as UserAdminResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update person
+  ///
+  /// Update an individual person.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [PersonUpdateDto] personUpdateDto (required):
+  Future<Response> updatePersonLegacyWithHttpInfo(String id, PersonUpdateDto personUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/people/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = personUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update person
+  ///
+  /// Update an individual person.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [PersonUpdateDto] personUpdateDto (required):
+  Future<PersonResponseDto?> updatePersonLegacy(String id, PersonUpdateDto personUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updatePersonLegacyWithHttpInfo(id, personUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'PersonResponseDto',) as PersonResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update a session
+  ///
+  /// Update a specific session identified by id.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [SessionUpdateDto] sessionUpdateDto (required):
+  Future<Response> updateSessionLegacyWithHttpInfo(String id, SessionUpdateDto sessionUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/sessions/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = sessionUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a session
+  ///
+  /// Update a specific session identified by id.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [SessionUpdateDto] sessionUpdateDto (required):
+  Future<SessionResponseDto?> updateSessionLegacy(String id, SessionUpdateDto sessionUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateSessionLegacyWithHttpInfo(id, sessionUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'SessionResponseDto',) as SessionResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update a stack
+  ///
+  /// Update an existing stack by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [StackUpdateDto] stackUpdateDto (required):
+  Future<Response> updateStackLegacyWithHttpInfo(String id, StackUpdateDto stackUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/stacks/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = stackUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a stack
+  ///
+  /// Update an existing stack by its ID.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [StackUpdateDto] stackUpdateDto (required):
+  Future<StackResponseDto?> updateStackLegacy(String id, StackUpdateDto stackUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateStackLegacyWithHttpInfo(id, stackUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'StackResponseDto',) as StackResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update a tag
+  ///
+  /// Update an existing tag identified by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [TagUpdateDto] tagUpdateDto (required):
+  Future<Response> updateTagLegacyWithHttpInfo(String id, TagUpdateDto tagUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/tags/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = tagUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a tag
+  ///
+  /// Update an existing tag identified by its ID.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [TagUpdateDto] tagUpdateDto (required):
+  Future<TagResponseDto?> updateTagLegacy(String id, TagUpdateDto tagUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateTagLegacyWithHttpInfo(id, tagUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'TagResponseDto',) as TagResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update a user
+  ///
+  /// Update an existing user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserAdminUpdateDto] userAdminUpdateDto (required):
+  Future<Response> updateUserAdminLegacyWithHttpInfo(String id, UserAdminUpdateDto userAdminUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/admin/users/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = userAdminUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a user
+  ///
+  /// Update an existing user.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserAdminUpdateDto] userAdminUpdateDto (required):
+  Future<UserAdminResponseDto?> updateUserAdminLegacy(String id, UserAdminUpdateDto userAdminUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateUserAdminLegacyWithHttpInfo(id, userAdminUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserAdminResponseDto',) as UserAdminResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update user preferences
+  ///
+  /// Update the preferences of a specific user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<Response> updateUserPreferencesAdminLegacyWithHttpInfo(String id, UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/admin/users/{id}/preferences'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = userPreferencesUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update user preferences
+  ///
+  /// Update the preferences of a specific user.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<UserPreferencesResponseDto?> updateUserPreferencesAdminLegacy(String id, UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateUserPreferencesAdminLegacyWithHttpInfo(id, userPreferencesUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserPreferencesResponseDto',) as UserPreferencesResponseDto;
+    
+    }
+    return null;
+  }
 }

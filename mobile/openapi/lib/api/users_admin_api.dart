@@ -641,7 +641,7 @@ class UsersAdminApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -662,6 +662,68 @@ class UsersAdminApi {
   /// * [UserAdminUpdateDto] userAdminUpdateDto (required):
   Future<UserAdminResponseDto?> updateUserAdmin(String id, UserAdminUpdateDto userAdminUpdateDto, { Future<void>? abortTrigger, }) async {
     final response = await updateUserAdminWithHttpInfo(id, userAdminUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserAdminResponseDto',) as UserAdminResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update a user
+  ///
+  /// Update an existing user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserAdminUpdateDto] userAdminUpdateDto (required):
+  Future<Response> updateUserAdminLegacyWithHttpInfo(String id, UserAdminUpdateDto userAdminUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/admin/users/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = userAdminUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a user
+  ///
+  /// Update an existing user.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserAdminUpdateDto] userAdminUpdateDto (required):
+  Future<UserAdminResponseDto?> updateUserAdminLegacy(String id, UserAdminUpdateDto userAdminUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateUserAdminLegacyWithHttpInfo(id, userAdminUpdateDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -703,7 +765,7 @@ class UsersAdminApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -724,6 +786,68 @@ class UsersAdminApi {
   /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
   Future<UserPreferencesResponseDto?> updateUserPreferencesAdmin(String id, UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
     final response = await updateUserPreferencesAdminWithHttpInfo(id, userPreferencesUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserPreferencesResponseDto',) as UserPreferencesResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update user preferences
+  ///
+  /// Update the preferences of a specific user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<Response> updateUserPreferencesAdminLegacyWithHttpInfo(String id, UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/admin/users/{id}/preferences'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = userPreferencesUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update user preferences
+  ///
+  /// Update the preferences of a specific user.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<UserPreferencesResponseDto?> updateUserPreferencesAdminLegacy(String id, UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateUserPreferencesAdminLegacyWithHttpInfo(id, userPreferencesUpdateDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

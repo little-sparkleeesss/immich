@@ -78,7 +78,8 @@ Class | Method | HTTP request | Description
 *APIKeysApi* | [**getApiKey**](doc//APIKeysApi.md#getapikey) | **GET** /api-keys/{id} | Retrieve an API key
 *APIKeysApi* | [**getApiKeys**](doc//APIKeysApi.md#getapikeys) | **GET** /api-keys | List all API keys
 *APIKeysApi* | [**getMyApiKey**](doc//APIKeysApi.md#getmyapikey) | **GET** /api-keys/me | Retrieve the current API key
-*APIKeysApi* | [**updateApiKey**](doc//APIKeysApi.md#updateapikey) | **PUT** /api-keys/{id} | Update an API key
+*APIKeysApi* | [**updateApiKey**](doc//APIKeysApi.md#updateapikey) | **PATCH** /api-keys/{id} | Update an API key
+*APIKeysApi* | [**updateApiKeyLegacy**](doc//APIKeysApi.md#updateapikeylegacy) | **PUT** /api-keys/{id} | Update an API key
 *ActivitiesApi* | [**createActivity**](doc//ActivitiesApi.md#createactivity) | **POST** /activities | Create an activity
 *ActivitiesApi* | [**deleteActivity**](doc//ActivitiesApi.md#deleteactivity) | **DELETE** /activities/{id} | Delete an activity
 *ActivitiesApi* | [**getActivities**](doc//ActivitiesApi.md#getactivities) | **GET** /activities | List all activities
@@ -116,9 +117,11 @@ Class | Method | HTTP request | Description
 *AssetsApi* | [**playAssetVideo**](doc//AssetsApi.md#playassetvideo) | **GET** /assets/{id}/video/playback | Play asset video
 *AssetsApi* | [**removeAssetEdits**](doc//AssetsApi.md#removeassetedits) | **DELETE** /assets/{id}/edits | Remove edits from an existing asset
 *AssetsApi* | [**runAssetJobs**](doc//AssetsApi.md#runassetjobs) | **POST** /assets/jobs | Run an asset job
-*AssetsApi* | [**updateAsset**](doc//AssetsApi.md#updateasset) | **PUT** /assets/{id} | Update an asset
+*AssetsApi* | [**updateAsset**](doc//AssetsApi.md#updateasset) | **PATCH** /assets/{id} | Update an asset
+*AssetsApi* | [**updateAssetLegacy**](doc//AssetsApi.md#updateassetlegacy) | **PUT** /assets/{id} | Update an asset
 *AssetsApi* | [**updateAssetMetadata**](doc//AssetsApi.md#updateassetmetadata) | **PUT** /assets/{id}/metadata | Update asset metadata
-*AssetsApi* | [**updateAssets**](doc//AssetsApi.md#updateassets) | **PUT** /assets | Update assets
+*AssetsApi* | [**updateAssets**](doc//AssetsApi.md#updateassets) | **PATCH** /assets | Update assets
+*AssetsApi* | [**updateAssetsLegacy**](doc//AssetsApi.md#updateassetslegacy) | **PUT** /assets | Update assets
 *AssetsApi* | [**updateBulkAssetMetadata**](doc//AssetsApi.md#updatebulkassetmetadata) | **PUT** /assets/metadata | Upsert asset metadata
 *AssetsApi* | [**uploadAsset**](doc//AssetsApi.md#uploadasset) | **POST** /assets | Upload asset
 *AssetsApi* | [**viewAsset**](doc//AssetsApi.md#viewasset) | **GET** /assets/{id}/thumbnail | View asset thumbnail
@@ -148,6 +151,19 @@ Class | Method | HTTP request | Description
 *DeprecatedApi* | [**createPartnerDeprecated**](doc//DeprecatedApi.md#createpartnerdeprecated) | **POST** /partners/{id} | Create a partner
 *DeprecatedApi* | [**getQueuesLegacy**](doc//DeprecatedApi.md#getqueueslegacy) | **GET** /jobs | Retrieve queue counts and status
 *DeprecatedApi* | [**runQueueCommandLegacy**](doc//DeprecatedApi.md#runqueuecommandlegacy) | **PUT** /jobs/{name} | Run jobs
+*DeprecatedApi* | [**updateApiKeyLegacy**](doc//DeprecatedApi.md#updateapikeylegacy) | **PUT** /api-keys/{id} | Update an API key
+*DeprecatedApi* | [**updateAssetLegacy**](doc//DeprecatedApi.md#updateassetlegacy) | **PUT** /assets/{id} | Update an asset
+*DeprecatedApi* | [**updateAssetsLegacy**](doc//DeprecatedApi.md#updateassetslegacy) | **PUT** /assets | Update assets
+*DeprecatedApi* | [**updateLibraryLegacy**](doc//DeprecatedApi.md#updatelibrarylegacy) | **PUT** /libraries/{id} | Update a library
+*DeprecatedApi* | [**updateMemoryLegacy**](doc//DeprecatedApi.md#updatememorylegacy) | **PUT** /memories/{id} | Update a memory
+*DeprecatedApi* | [**updateMyPreferencesLegacy**](doc//DeprecatedApi.md#updatemypreferenceslegacy) | **PUT** /users/me/preferences | Update my preferences
+*DeprecatedApi* | [**updateMyUserLegacy**](doc//DeprecatedApi.md#updatemyuserlegacy) | **PUT** /users/me | Update current user
+*DeprecatedApi* | [**updatePersonLegacy**](doc//DeprecatedApi.md#updatepersonlegacy) | **PUT** /people/{id} | Update person
+*DeprecatedApi* | [**updateSessionLegacy**](doc//DeprecatedApi.md#updatesessionlegacy) | **PUT** /sessions/{id} | Update a session
+*DeprecatedApi* | [**updateStackLegacy**](doc//DeprecatedApi.md#updatestacklegacy) | **PUT** /stacks/{id} | Update a stack
+*DeprecatedApi* | [**updateTagLegacy**](doc//DeprecatedApi.md#updatetaglegacy) | **PUT** /tags/{id} | Update a tag
+*DeprecatedApi* | [**updateUserAdminLegacy**](doc//DeprecatedApi.md#updateuseradminlegacy) | **PUT** /admin/users/{id} | Update a user
+*DeprecatedApi* | [**updateUserPreferencesAdminLegacy**](doc//DeprecatedApi.md#updateuserpreferencesadminlegacy) | **PUT** /admin/users/{id}/preferences | Update user preferences
 *DownloadApi* | [**downloadArchive**](doc//DownloadApi.md#downloadarchive) | **POST** /download/archive | Download asset archive
 *DownloadApi* | [**getDownloadInfo**](doc//DownloadApi.md#getdownloadinfo) | **POST** /download/info | Retrieve download information
 *DuplicatesApi* | [**deleteDuplicate**](doc//DuplicatesApi.md#deleteduplicate) | **DELETE** /duplicates/{id} | Dismiss a duplicate group
@@ -167,7 +183,8 @@ Class | Method | HTTP request | Description
 *LibrariesApi* | [**getLibrary**](doc//LibrariesApi.md#getlibrary) | **GET** /libraries/{id} | Retrieve a library
 *LibrariesApi* | [**getLibraryStatistics**](doc//LibrariesApi.md#getlibrarystatistics) | **GET** /libraries/{id}/statistics | Retrieve library statistics
 *LibrariesApi* | [**scanLibrary**](doc//LibrariesApi.md#scanlibrary) | **POST** /libraries/{id}/scan | Scan a library
-*LibrariesApi* | [**updateLibrary**](doc//LibrariesApi.md#updatelibrary) | **PUT** /libraries/{id} | Update a library
+*LibrariesApi* | [**updateLibrary**](doc//LibrariesApi.md#updatelibrary) | **PATCH** /libraries/{id} | Update a library
+*LibrariesApi* | [**updateLibraryLegacy**](doc//LibrariesApi.md#updatelibrarylegacy) | **PUT** /libraries/{id} | Update a library
 *LibrariesApi* | [**validate**](doc//LibrariesApi.md#validate) | **POST** /libraries/{id}/validate | Validate library settings
 *MaintenanceAdminApi* | [**detectPriorInstall**](doc//MaintenanceAdminApi.md#detectpriorinstall) | **GET** /admin/maintenance/detect-install | Detect existing install
 *MaintenanceAdminApi* | [**getMaintenanceStatus**](doc//MaintenanceAdminApi.md#getmaintenancestatus) | **GET** /admin/maintenance/status | Get maintenance mode status
@@ -182,7 +199,8 @@ Class | Method | HTTP request | Description
 *MemoriesApi* | [**memoriesStatistics**](doc//MemoriesApi.md#memoriesstatistics) | **GET** /memories/statistics | Retrieve memories statistics
 *MemoriesApi* | [**removeMemoryAssets**](doc//MemoriesApi.md#removememoryassets) | **DELETE** /memories/{id}/assets | Remove assets from a memory
 *MemoriesApi* | [**searchMemories**](doc//MemoriesApi.md#searchmemories) | **GET** /memories | Retrieve memories
-*MemoriesApi* | [**updateMemory**](doc//MemoriesApi.md#updatememory) | **PUT** /memories/{id} | Update a memory
+*MemoriesApi* | [**updateMemory**](doc//MemoriesApi.md#updatememory) | **PATCH** /memories/{id} | Update a memory
+*MemoriesApi* | [**updateMemoryLegacy**](doc//MemoriesApi.md#updatememorylegacy) | **PUT** /memories/{id} | Update a memory
 *NotificationsApi* | [**deleteNotification**](doc//NotificationsApi.md#deletenotification) | **DELETE** /notifications/{id} | Delete a notification
 *NotificationsApi* | [**deleteNotifications**](doc//NotificationsApi.md#deletenotifications) | **DELETE** /notifications | Delete notifications
 *NotificationsApi* | [**getNotification**](doc//NotificationsApi.md#getnotification) | **GET** /notifications/{id} | Get a notification
@@ -207,7 +225,8 @@ Class | Method | HTTP request | Description
 *PeopleApi* | [**mergePerson**](doc//PeopleApi.md#mergeperson) | **POST** /people/{id}/merge | Merge people
 *PeopleApi* | [**reassignFaces**](doc//PeopleApi.md#reassignfaces) | **PUT** /people/{id}/reassign | Reassign faces
 *PeopleApi* | [**updatePeople**](doc//PeopleApi.md#updatepeople) | **PUT** /people | Update people
-*PeopleApi* | [**updatePerson**](doc//PeopleApi.md#updateperson) | **PUT** /people/{id} | Update person
+*PeopleApi* | [**updatePerson**](doc//PeopleApi.md#updateperson) | **PATCH** /people/{id} | Update person
+*PeopleApi* | [**updatePersonLegacy**](doc//PeopleApi.md#updatepersonlegacy) | **PUT** /people/{id} | Update person
 *PluginsApi* | [**getPlugin**](doc//PluginsApi.md#getplugin) | **GET** /plugins/{id} | Retrieve a plugin
 *PluginsApi* | [**searchPluginMethods**](doc//PluginsApi.md#searchpluginmethods) | **GET** /plugins/methods | Retrieve plugin methods
 *PluginsApi* | [**searchPluginTemplates**](doc//PluginsApi.md#searchplugintemplates) | **GET** /plugins/templates | Retrieve workflow templates
@@ -246,7 +265,8 @@ Class | Method | HTTP request | Description
 *SessionsApi* | [**deleteSession**](doc//SessionsApi.md#deletesession) | **DELETE** /sessions/{id} | Delete a session
 *SessionsApi* | [**getSessions**](doc//SessionsApi.md#getsessions) | **GET** /sessions | Retrieve sessions
 *SessionsApi* | [**lockSession**](doc//SessionsApi.md#locksession) | **POST** /sessions/{id}/lock | Lock a session
-*SessionsApi* | [**updateSession**](doc//SessionsApi.md#updatesession) | **PUT** /sessions/{id} | Update a session
+*SessionsApi* | [**updateSession**](doc//SessionsApi.md#updatesession) | **PATCH** /sessions/{id} | Update a session
+*SessionsApi* | [**updateSessionLegacy**](doc//SessionsApi.md#updatesessionlegacy) | **PUT** /sessions/{id} | Update a session
 *SharedLinksApi* | [**addSharedLinkAssets**](doc//SharedLinksApi.md#addsharedlinkassets) | **PUT** /shared-links/{id}/assets | Add assets to a shared link
 *SharedLinksApi* | [**createSharedLink**](doc//SharedLinksApi.md#createsharedlink) | **POST** /shared-links | Create a shared link
 *SharedLinksApi* | [**getAllSharedLinks**](doc//SharedLinksApi.md#getallsharedlinks) | **GET** /shared-links | Retrieve all shared links
@@ -262,7 +282,8 @@ Class | Method | HTTP request | Description
 *StacksApi* | [**getStack**](doc//StacksApi.md#getstack) | **GET** /stacks/{id} | Retrieve a stack
 *StacksApi* | [**removeAssetFromStack**](doc//StacksApi.md#removeassetfromstack) | **DELETE** /stacks/{id}/assets/{assetId} | Remove an asset from a stack
 *StacksApi* | [**searchStacks**](doc//StacksApi.md#searchstacks) | **GET** /stacks | Retrieve stacks
-*StacksApi* | [**updateStack**](doc//StacksApi.md#updatestack) | **PUT** /stacks/{id} | Update a stack
+*StacksApi* | [**updateStack**](doc//StacksApi.md#updatestack) | **PATCH** /stacks/{id} | Update a stack
+*StacksApi* | [**updateStackLegacy**](doc//StacksApi.md#updatestacklegacy) | **PUT** /stacks/{id} | Update a stack
 *SyncApi* | [**deleteSyncAck**](doc//SyncApi.md#deletesyncack) | **DELETE** /sync/ack | Delete acknowledgements
 *SyncApi* | [**getSyncAck**](doc//SyncApi.md#getsyncack) | **GET** /sync/ack | Retrieve acknowledgements
 *SyncApi* | [**getSyncStream**](doc//SyncApi.md#getsyncstream) | **POST** /sync/stream | Stream sync changes
@@ -282,7 +303,8 @@ Class | Method | HTTP request | Description
 *TagsApi* | [**getTagById**](doc//TagsApi.md#gettagbyid) | **GET** /tags/{id} | Retrieve a tag
 *TagsApi* | [**tagAssets**](doc//TagsApi.md#tagassets) | **PUT** /tags/{id}/assets | Tag assets
 *TagsApi* | [**untagAssets**](doc//TagsApi.md#untagassets) | **DELETE** /tags/{id}/assets | Untag assets
-*TagsApi* | [**updateTag**](doc//TagsApi.md#updatetag) | **PUT** /tags/{id} | Update a tag
+*TagsApi* | [**updateTag**](doc//TagsApi.md#updatetag) | **PATCH** /tags/{id} | Update a tag
+*TagsApi* | [**updateTagLegacy**](doc//TagsApi.md#updatetaglegacy) | **PUT** /tags/{id} | Update a tag
 *TagsApi* | [**upsertTags**](doc//TagsApi.md#upserttags) | **PUT** /tags | Upsert tags
 *TimelineApi* | [**getTimeBucket**](doc//TimelineApi.md#gettimebucket) | **GET** /timeline/bucket | Get time bucket
 *TimelineApi* | [**getTimeBuckets**](doc//TimelineApi.md#gettimebuckets) | **GET** /timeline/buckets | Get time buckets
@@ -303,8 +325,10 @@ Class | Method | HTTP request | Description
 *UsersApi* | [**searchUsers**](doc//UsersApi.md#searchusers) | **GET** /users | Get all users
 *UsersApi* | [**setUserLicense**](doc//UsersApi.md#setuserlicense) | **PUT** /users/me/license | Set user product key
 *UsersApi* | [**setUserOnboarding**](doc//UsersApi.md#setuseronboarding) | **PUT** /users/me/onboarding | Update user onboarding
-*UsersApi* | [**updateMyPreferences**](doc//UsersApi.md#updatemypreferences) | **PUT** /users/me/preferences | Update my preferences
-*UsersApi* | [**updateMyUser**](doc//UsersApi.md#updatemyuser) | **PUT** /users/me | Update current user
+*UsersApi* | [**updateMyPreferences**](doc//UsersApi.md#updatemypreferences) | **PATCH** /users/me/preferences | Update my preferences
+*UsersApi* | [**updateMyPreferencesLegacy**](doc//UsersApi.md#updatemypreferenceslegacy) | **PUT** /users/me/preferences | Update my preferences
+*UsersApi* | [**updateMyUser**](doc//UsersApi.md#updatemyuser) | **PATCH** /users/me | Update current user
+*UsersApi* | [**updateMyUserLegacy**](doc//UsersApi.md#updatemyuserlegacy) | **PUT** /users/me | Update current user
 *UsersAdminApi* | [**createUserAdmin**](doc//UsersAdminApi.md#createuseradmin) | **POST** /admin/users | Create a user
 *UsersAdminApi* | [**deleteUserAdmin**](doc//UsersAdminApi.md#deleteuseradmin) | **DELETE** /admin/users/{id} | Delete a user
 *UsersAdminApi* | [**getUserAdmin**](doc//UsersAdminApi.md#getuseradmin) | **GET** /admin/users/{id} | Retrieve a user
@@ -314,8 +338,10 @@ Class | Method | HTTP request | Description
 *UsersAdminApi* | [**getUserStatisticsAdmin**](doc//UsersAdminApi.md#getuserstatisticsadmin) | **GET** /admin/users/{id}/statistics | Retrieve user statistics
 *UsersAdminApi* | [**restoreUserAdmin**](doc//UsersAdminApi.md#restoreuseradmin) | **POST** /admin/users/{id}/restore | Restore a deleted user
 *UsersAdminApi* | [**searchUsersAdmin**](doc//UsersAdminApi.md#searchusersadmin) | **GET** /admin/users | Search users
-*UsersAdminApi* | [**updateUserAdmin**](doc//UsersAdminApi.md#updateuseradmin) | **PUT** /admin/users/{id} | Update a user
-*UsersAdminApi* | [**updateUserPreferencesAdmin**](doc//UsersAdminApi.md#updateuserpreferencesadmin) | **PUT** /admin/users/{id}/preferences | Update user preferences
+*UsersAdminApi* | [**updateUserAdmin**](doc//UsersAdminApi.md#updateuseradmin) | **PATCH** /admin/users/{id} | Update a user
+*UsersAdminApi* | [**updateUserAdminLegacy**](doc//UsersAdminApi.md#updateuseradminlegacy) | **PUT** /admin/users/{id} | Update a user
+*UsersAdminApi* | [**updateUserPreferencesAdmin**](doc//UsersAdminApi.md#updateuserpreferencesadmin) | **PATCH** /admin/users/{id}/preferences | Update user preferences
+*UsersAdminApi* | [**updateUserPreferencesAdminLegacy**](doc//UsersAdminApi.md#updateuserpreferencesadminlegacy) | **PUT** /admin/users/{id}/preferences | Update user preferences
 *ViewsApi* | [**getAssetsByOriginalPath**](doc//ViewsApi.md#getassetsbyoriginalpath) | **GET** /view/folder | Retrieve assets by original path
 *ViewsApi* | [**getUniqueOriginalPaths**](doc//ViewsApi.md#getuniqueoriginalpaths) | **GET** /view/folder/unique-paths | Retrieve unique paths
 *WorkflowsApi* | [**createWorkflow**](doc//WorkflowsApi.md#createworkflow) | **POST** /workflows | Create a workflow
@@ -324,7 +350,7 @@ Class | Method | HTTP request | Description
 *WorkflowsApi* | [**getWorkflowForShare**](doc//WorkflowsApi.md#getworkflowforshare) | **GET** /workflows/{id}/share | Retrieve a workflow
 *WorkflowsApi* | [**getWorkflowTriggers**](doc//WorkflowsApi.md#getworkflowtriggers) | **GET** /workflows/triggers | List all workflow triggers
 *WorkflowsApi* | [**searchWorkflows**](doc//WorkflowsApi.md#searchworkflows) | **GET** /workflows | List all workflows
-*WorkflowsApi* | [**updateWorkflow**](doc//WorkflowsApi.md#updateworkflow) | **PUT** /workflows/{id} | Update a workflow
+*WorkflowsApi* | [**updateWorkflow**](doc//WorkflowsApi.md#updateworkflow) | **PATCH** /workflows/{id} | Update a workflow
 
 
 ## Documentation For Models

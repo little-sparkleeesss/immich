@@ -790,7 +790,7 @@ class UsersApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -809,6 +809,63 @@ class UsersApi {
   /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
   Future<UserPreferencesResponseDto?> updateMyPreferences(UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
     final response = await updateMyPreferencesWithHttpInfo(userPreferencesUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserPreferencesResponseDto',) as UserPreferencesResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update my preferences
+  ///
+  /// Update the preferences of the current user.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<Response> updateMyPreferencesLegacyWithHttpInfo(UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/users/me/preferences';
+
+    // ignore: prefer_final_locals
+    Object? postBody = userPreferencesUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update my preferences
+  ///
+  /// Update the preferences of the current user.
+  ///
+  /// Parameters:
+  ///
+  /// * [UserPreferencesUpdateDto] userPreferencesUpdateDto (required):
+  Future<UserPreferencesResponseDto?> updateMyPreferencesLegacy(UserPreferencesUpdateDto userPreferencesUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateMyPreferencesLegacyWithHttpInfo(userPreferencesUpdateDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
@@ -847,7 +904,7 @@ class UsersApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -866,6 +923,63 @@ class UsersApi {
   /// * [UserUpdateMeDto] userUpdateMeDto (required):
   Future<UserAdminResponseDto?> updateMyUser(UserUpdateMeDto userUpdateMeDto, { Future<void>? abortTrigger, }) async {
     final response = await updateMyUserWithHttpInfo(userUpdateMeDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'UserAdminResponseDto',) as UserAdminResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update current user
+  ///
+  /// Update the current user making the API request.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [UserUpdateMeDto] userUpdateMeDto (required):
+  Future<Response> updateMyUserLegacyWithHttpInfo(UserUpdateMeDto userUpdateMeDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/users/me';
+
+    // ignore: prefer_final_locals
+    Object? postBody = userUpdateMeDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update current user
+  ///
+  /// Update the current user making the API request.
+  ///
+  /// Parameters:
+  ///
+  /// * [UserUpdateMeDto] userUpdateMeDto (required):
+  Future<UserAdminResponseDto?> updateMyUserLegacy(UserUpdateMeDto userUpdateMeDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateMyUserLegacyWithHttpInfo(userUpdateMeDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

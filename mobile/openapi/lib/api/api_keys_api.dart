@@ -310,7 +310,7 @@ class APIKeysApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -331,6 +331,68 @@ class APIKeysApi {
   /// * [ApiKeyUpdateDto] apiKeyUpdateDto (required):
   Future<ApiKeyResponseDto?> updateApiKey(String id, ApiKeyUpdateDto apiKeyUpdateDto, { Future<void>? abortTrigger, }) async {
     final response = await updateApiKeyWithHttpInfo(id, apiKeyUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'ApiKeyResponseDto',) as ApiKeyResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update an API key
+  ///
+  /// Updates the name and permissions of an API key by its ID. The current user must own this API key.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ApiKeyUpdateDto] apiKeyUpdateDto (required):
+  Future<Response> updateApiKeyLegacyWithHttpInfo(String id, ApiKeyUpdateDto apiKeyUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/api-keys/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = apiKeyUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update an API key
+  ///
+  /// Updates the name and permissions of an API key by its ID. The current user must own this API key.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [ApiKeyUpdateDto] apiKeyUpdateDto (required):
+  Future<ApiKeyResponseDto?> updateApiKeyLegacy(String id, ApiKeyUpdateDto apiKeyUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateApiKeyLegacyWithHttpInfo(id, apiKeyUpdateDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }

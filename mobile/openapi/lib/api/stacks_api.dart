@@ -379,7 +379,7 @@ class StacksApi {
 
     return apiClient.invokeAPI(
       apiPath,
-      'PUT',
+      'PATCH',
       queryParams,
       postBody,
       headerParams,
@@ -400,6 +400,68 @@ class StacksApi {
   /// * [StackUpdateDto] stackUpdateDto (required):
   Future<StackResponseDto?> updateStack(String id, StackUpdateDto stackUpdateDto, { Future<void>? abortTrigger, }) async {
     final response = await updateStackWithHttpInfo(id, stackUpdateDto, abortTrigger: abortTrigger,);
+    if (response.statusCode >= HttpStatus.badRequest) {
+      throw ApiException(response.statusCode, await _decodeBodyBytes(response));
+    }
+    // When a remote server returns no body with a status of 204, we shall not decode it.
+    // At the time of writing this, `dart:convert` will throw an "Unexpected end of input"
+    // FormatException when trying to decode an empty string.
+    if (response.body.isNotEmpty && response.statusCode != HttpStatus.noContent) {
+      return await apiClient.deserializeAsync(await _decodeBodyBytes(response), 'StackResponseDto',) as StackResponseDto;
+    
+    }
+    return null;
+  }
+
+  /// Update a stack
+  ///
+  /// Update an existing stack by its ID.
+  ///
+  /// Note: This method returns the HTTP [Response].
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [StackUpdateDto] stackUpdateDto (required):
+  Future<Response> updateStackLegacyWithHttpInfo(String id, StackUpdateDto stackUpdateDto, { Future<void>? abortTrigger, }) async {
+    // ignore: prefer_const_declarations
+    final apiPath = r'/stacks/{id}'
+      .replaceAll('{id}', id);
+
+    // ignore: prefer_final_locals
+    Object? postBody = stackUpdateDto;
+
+    final queryParams = <QueryParam>[];
+    final headerParams = <String, String>{};
+    final formParams = <String, String>{};
+
+    const contentTypes = <String>['application/json'];
+
+
+    return apiClient.invokeAPI(
+      apiPath,
+      'PUT',
+      queryParams,
+      postBody,
+      headerParams,
+      formParams,
+      contentTypes.isEmpty ? null : contentTypes.first,
+      abortTrigger: abortTrigger,
+    );
+  }
+
+  /// Update a stack
+  ///
+  /// Update an existing stack by its ID.
+  ///
+  /// Parameters:
+  ///
+  /// * [String] id (required):
+  ///
+  /// * [StackUpdateDto] stackUpdateDto (required):
+  Future<StackResponseDto?> updateStackLegacy(String id, StackUpdateDto stackUpdateDto, { Future<void>? abortTrigger, }) async {
+    final response = await updateStackLegacyWithHttpInfo(id, stackUpdateDto, abortTrigger: abortTrigger,);
     if (response.statusCode >= HttpStatus.badRequest) {
       throw ApiException(response.statusCode, await _decodeBodyBytes(response));
     }
