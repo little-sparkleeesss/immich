@@ -88,13 +88,16 @@ function between(a: string, b: string): string {
       const padding = i > a.length ? '0'.repeat(i - a.length) : '';
       return prefix + padding + ALPHABET[Math.floor((ca + cb) / 2)] + a.slice(i + 1);
     }
-    if (ca !== cb) {
-      // Adjacent characters (cb = ca + 1) or ca > cb (stale rank).
-      // Append the smallest character plus a midpoint to leave room for
-      // future insertions. Without the midpoint, repeatedly inserting
-      // between a and a+'0' eventually produces duplicate ranks.
-      return a + ALPHABET[0] + ALPHABET[18];
+    if (ca > cb) {
+      // ca > cb at this position, which can only happen when a previous
+      // position had adjacent ascending characters (ca < cb) that made
+      // a < b overall. Later positions can be inverted. We cannot bisect
+      // here, so extend a by the minimum character to stay > a and < b.
+      return a + ALPHABET[0];
     }
+    // ca === cb or ca === cb - 1 (adjacent ascending).
+    // Don't bail out — continue to the next position. Bisecting deeper
+    // keeps rank growth logarithmic instead of linear O(N).
   }
   // a is a prefix of b (all compared characters equal up to maxLen).
   // b's first extending character must be '0' — otherwise the loop

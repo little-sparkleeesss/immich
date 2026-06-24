@@ -213,6 +213,66 @@ describe('extractRank', () => {
   });
 });
 
+describe('between rank length stability', () => {
+  it('should NOT grow linearly when repeatedly inserting between adjacent-prefix and boundary', () => {
+    // Simulates the real-world bug: all assets start with rank 'i',
+    // one gets moved via before('i') = 'hz', then subsequent moves
+    // insert between the 'hz...' group and 'i'. Without the fix,
+    // each between() appends '0i', growing the rank by 2 chars per call.
+    const boundary = 'i';
+    let rank = 'hz'; // before('i')
+    const lengths: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      rank = generateRank(rank, boundary);
+      lengths.push(rank.length);
+    }
+    const maxLen = Math.max(...lengths);
+    // With the fix, bisecting at deeper positions keeps growth bounded.
+    // Without the fix, rank would grow to ~44 chars after 20 iterations.
+    expect(maxLen).toBeLessThanOrEqual(8);
+    // Verify monotonic ordering
+    let prev = 'hz';
+    for (let i = 0; i < 20; i++) {
+      const next = generateRank(prev, boundary);
+      expect(next > prev).toBe(true);
+      expect(next < boundary).toBe(true);
+      prev = next;
+    }
+  });
+
+  it('should handle ca > cb gracefully when deeper position is inverted', () => {
+    // between('hz', 'i0'): at position 0, 'h' < 'i' (adjacent).
+    // At position 1, 'z' (35) > '0' (0). Should return a short rank.
+    const rank = generateRank('hz', 'i0');
+    expect(rank > 'hz').toBe(true);
+    expect(rank < 'i0').toBe(true);
+    expect(rank.length).toBeLessThanOrEqual(6);
+  });
+
+  it('should keep ranks short across many operations typical for an album', () => {
+    // Simulate a realistic album reorder pattern:
+    // 10 assets, all starting with 'i', getting repositioned in batches
+    const RANKS = ['i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i', 'i'];
+    const moved = [...RANKS]; // current order: all 'i'
+
+    // Move each asset to the front one by one, simulating prefix anchoring
+    let lastFront = generateRank(null, 'i'); // before('i') = 'hz'
+    moved.unshift(lastFront); // prepend
+
+    const allRanks: string[] = [lastFront];
+    for (let i = 1; i < 15; i++) {
+      const prev = moved[0]; // the current front
+      const next = i < moved.length ? moved[i] : null;
+      const rank = generateRank(prev, next);
+      moved.unshift(rank);
+      allRanks.push(rank);
+    }
+
+    const maxLen = Math.max(...allRanks.map((r) => r.length));
+    expect(maxLen).toBeLessThanOrEqual(10);
+  });
+});
+
 describe('position string ordering', () => {
   it('should sort correctly when one rank is a prefix of another', () => {
     const pos1 = generatePosition('lzz', 'token', 1);
