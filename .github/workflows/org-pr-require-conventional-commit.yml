@@ -6,6 +6,7 @@ on:
 
 jobs:
   validate-pr-title:
+    if: github.repository == 'immich-app/immich'
     name: Validate PR Title (conventional commit)
     uses: immich-app/devtools/.github/workflows/shared-pr-require-conventional-commit.yml@main
     permissions:

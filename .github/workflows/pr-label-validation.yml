@@ -8,6 +8,7 @@ permissions: {}
 
 jobs:
   validate-release-label:
+    if: github.repository == 'immich-app/immich'
     runs-on: ubuntu-latest
     permissions:
       issues: write

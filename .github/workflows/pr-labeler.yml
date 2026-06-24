@@ -6,6 +6,7 @@ permissions: {}
 
 jobs:
   labeler:
+    if: github.repository == 'immich-app/immich'
     permissions:
       contents: read
       pull-requests: write

@@ -24,6 +24,7 @@ env:
 
 jobs:
   merge:
+    if: github.repository == 'immich-app/immich'
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write

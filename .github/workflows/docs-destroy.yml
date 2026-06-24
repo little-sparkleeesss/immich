@@ -10,6 +10,7 @@ env:
 
 jobs:
   deploy:
+    if: github.repository == 'immich-app/immich'
     name: Docs Destroy
     runs-on: ubuntu-latest
     permissions:

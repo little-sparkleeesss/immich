@@ -14,6 +14,7 @@ permissions: {}
 
 jobs:
   pre-job:
+    if: github.repository == 'immich-app/immich'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,7 +47,7 @@ jobs:
     needs: pre-job
     permissions:
       contents: read
-    if: ${{ fromJSON(needs.pre-job.outputs.should_run).docs == true }}
+    if: ${{ github.repository == 'immich-app/immich' && fromJSON(needs.pre-job.outputs.should_run).docs == true }}
     runs-on: ubuntu-latest
     defaults:
       run:

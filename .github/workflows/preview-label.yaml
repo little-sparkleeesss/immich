@@ -9,7 +9,7 @@ permissions: {}
 jobs:
   comment-status:
     runs-on: ubuntu-latest
-    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'preview' }}
+    if: ${{ github.repository == 'immich-app/immich' && github.event.action == 'labeled' && github.event.label.name == 'preview' }}
     permissions:
       pull-requests: write
     steps:
@@ -27,7 +27,7 @@ jobs:
 
   remove-label:
     runs-on: ubuntu-latest
-    if: ${{ (github.event.action == 'closed' || github.event.pull_request.head.repo.fork) && contains(github.event.pull_request.labels.*.name, 'preview') }}
+    if: ${{ github.repository == 'immich-app/immich' && (github.event.action == 'closed' || github.event.pull_request.head.repo.fork) && contains(github.event.pull_request.labels.*.name, 'preview') }}
     permissions:
       pull-requests: write
     steps:

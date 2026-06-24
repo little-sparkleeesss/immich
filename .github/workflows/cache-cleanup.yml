@@ -12,6 +12,7 @@ permissions: {}
 
 jobs:
   cleanup:
+    if: github.repository == 'immich-app/immich'
     name: Cleanup
     runs-on: ubuntu-latest
     permissions:
