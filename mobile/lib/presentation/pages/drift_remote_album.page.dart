@@ -154,23 +154,30 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
       // Fetch CRDT positions and sort
       final positions = await notifier.getAlbumAssetPositions(_album.id);
 
-      if (positions.isNotEmpty && allAssets.isNotEmpty) {
-        final positionMap = <String, String>{};
-        for (final p in positions) {
-          positionMap[p.assetId] = p.position;
-        }
-
-        // Sort: positioned assets first (by position string), unpositioned last.
-        allAssets.sort((a, b) {
-          final posA = positionMap[a.id];
-          final posB = positionMap[b.id];
-          if (posA != null && posB != null) {
-            return posA.compareTo(posB);
+      if (allAssets.isNotEmpty) {
+        if (positions.isNotEmpty) {
+          final positionMap = <String, String>{};
+          for (final p in positions) {
+            positionMap[p.assetId] = p.position;
           }
-          if (posA != null) return -1;
-          if (posB != null) return 1;
-          return 0;
-        });
+
+          // Sort: positioned assets first (by position string), unpositioned last.
+          allAssets.sort((a, b) {
+            final posA = positionMap[a.id];
+            final posB = positionMap[b.id];
+            if (posA != null && posB != null) {
+              return posA.compareTo(posB);
+            }
+            if (posA != null) return -1;
+            if (posB != null) return 1;
+            return 0;
+          });
+        } else {
+          // Fallback: when no positions exist yet (first time switching to
+          // custom order), sort by createdAt descending to match the date
+          // sort view the user was seeing.
+          allAssets.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        }
       }
 
       if (mounted) {
