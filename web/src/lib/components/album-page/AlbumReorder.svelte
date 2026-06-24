@@ -7,6 +7,7 @@
   import { mdiDragVertical } from '@mdi/js';
   import { Icon } from '@immich/ui';
   import type { AlbumResponseDto } from '@immich/sdk';
+  import { mediaQueryManager } from '$lib/stores/media-query-manager.svelte';
 
   interface Props {
     album: AlbumResponseDto;
@@ -17,6 +18,11 @@
   }
 
   let { album, assets, interactionMode, onClickAsset, onReorder }: Props = $props();
+
+  // Match the timeline's rowHeight so the grid layout is visually consistent
+  // when switching between date-sort and custom-sort modes.
+  const maxMd = $derived(mediaQueryManager.maxMd);
+  const rowHeight = $derived(maxMd ? 100 : 235);
 
   let displayAssets = $state<TimelineAsset[]>([]);
   let isDragging = $state(false);
@@ -340,7 +346,7 @@
     role="application"
     class="grid gap-2 p-2"
     class:touch-none={interactionMode === 'reorder'}
-    style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));"
+    style="grid-template-columns: repeat(auto-fill, minmax({rowHeight}px, 1fr));"
     ondragstart={(e) => e.preventDefault()}
   >
     {#each displayAssets as asset (asset.id)}

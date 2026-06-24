@@ -21,6 +21,7 @@ class AlbumReorderGrid extends ConsumerStatefulWidget {
   const AlbumReorderGrid({
     required this.assets,
     required this.interactionMode,
+    required this.columnCount,
     required this.onClickAsset,
     required this.onMove,
     super.key,
@@ -31,6 +32,9 @@ class AlbumReorderGrid extends ConsumerStatefulWidget {
 
   /// Current interaction mode.
   final AlbumReorderInteractionMode interactionMode;
+
+  /// Number of columns in the grid, matching [TimelineConfig.tilesPerRow].
+  final int columnCount;
 
   /// Called when the user taps a tile (without drag).
   /// Receives the tapped asset and the current ordered list (so the
@@ -305,8 +309,8 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
         SliverPadding(
           padding: const EdgeInsets.all(2),
           sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 180,
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: widget.columnCount,
               mainAxisSpacing: 2,
               crossAxisSpacing: 2,
               childAspectRatio: 1,

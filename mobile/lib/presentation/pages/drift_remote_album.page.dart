@@ -14,6 +14,7 @@ import 'package:immich_mobile/presentation/widgets/bottom_sheet/remote_album_bot
 import 'package:immich_mobile/presentation/widgets/remote_album/drift_album_option.widget.dart';
 import 'package:immich_mobile/presentation/widgets/timeline/timeline.widget.dart';
 import 'package:immich_mobile/providers/infrastructure/album.provider.dart';
+import 'package:immich_mobile/providers/infrastructure/settings.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/current_album.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/remote_album.provider.dart';
 import 'package:immich_mobile/providers/infrastructure/timeline.provider.dart';
@@ -394,6 +395,7 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
                           ? AlbumReorderGrid(
                               assets: _customSortedAssets!,
                               interactionMode: _interactionMode,
+                              columnCount: ref.read(appConfigProvider.select((config) => config.timeline.tilesPerRow)),
                               onClickAsset: _openAssetViewer,
                               onMove: _handleMove,
                             )
