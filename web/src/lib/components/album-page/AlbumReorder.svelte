@@ -8,6 +8,7 @@
   import { Icon } from '@immich/ui';
   import type { AlbumResponseDto } from '@immich/sdk';
   import { mediaQueryManager } from '$lib/stores/media-query-manager.svelte';
+  import { getJustifiedLayoutFromAssets } from '$lib/utils/layout-utils';
 
   interface Props {
     album: AlbumResponseDto;
@@ -26,11 +27,45 @@
 
   let displayAssets = $state<TimelineAsset[]>([]);
   let isDragging = $state(false);
+  let saveInFlight = $state(false);
   let previousOrder: TimelineAsset[] | null = $state<TimelineAsset[] | null>(null);
 
   // Drag feedback: floating thumbnail that follows the cursor
   let dragCursorX = $state(0);
   let dragCursorY = $state(0);
+  let dragSourceWidth = $state(0);
+  let dragSourceHeight = $state(0);
+
+  // Justified layout: matches the timeline's row-wrapping behaviour
+  let gridElement: HTMLElement | undefined = $state();
+  let gridWidth = $state(0);
+  let gridIsRtl = $state(false);
+
+  const layoutGeometry = $derived.by(() => {
+    if (displayAssets.length === 0 || gridWidth === 0) {
+      return null;
+    }
+    return getJustifiedLayoutFromAssets(displayAssets, {
+      rowHeight,
+      rowWidth: gridWidth,
+      spacing: 2,
+      heightTolerance: 0.5,
+    });
+  });
+
+  const tilePositions = $derived(layoutGeometry ? displayAssets.map((_, i) => layoutGeometry.getPosition(i)) : []);
+  const gridHeight = $derived(layoutGeometry ? `${layoutGeometry.containerHeight}px` : '0px');
+  const gridMinHeight = $derived(!layoutGeometry && displayAssets.length > 0 ? `${rowHeight}px` : undefined);
+
+  // Cache the grid's writing direction once it mounts. The justified layout
+  // emits logical (LTR) `left` values that the browser mirrors via
+  // `inset-inline-start` in RTL, so hit-testing must mirror the cursor to
+  // match. Direction cannot change mid-drag, so we read it once on bind.
+  $effect(() => {
+    if (gridElement) {
+      gridIsRtl = getComputedStyle(gridElement).direction === 'rtl';
+    }
+  });
 
   // Drop target highlight: the tile under the cursor during drag
   let dragTargetId = $state<string | undefined>(undefined);
@@ -42,6 +77,8 @@
     startY: 0,
     exceededThreshold: false,
     rafPending: false,
+    rafId: undefined as number | undefined,
+    lastInsertAfter: undefined as boolean | undefined,
   };
 
   let dragSourceAsset = $derived(
@@ -49,8 +86,6 @@
   );
 
   const DRAG_THRESHOLD = 5;
-
-  const HYSTERESIS_PX = 20;
 
   // Sync displayAssets from assets prop.
   // When not dragging: sync both ID changes and order changes.
@@ -80,7 +115,7 @@
       if (node.dataset.interactionMode !== 'reorder') {
         return;
       }
-      if (dragState.pointerId !== undefined) {
+      if (dragState.pointerId !== undefined || saveInFlight) {
         return;
       }
 
@@ -92,6 +127,7 @@
       dragState.startX = e.clientX;
       dragState.startY = e.clientY;
       dragState.exceededThreshold = false;
+      dragState.lastInsertAfter = undefined;
     };
 
     const onPointerMove = (e: PointerEvent) => {
@@ -108,6 +144,11 @@
         dragState.exceededThreshold = true;
         isDragging = true;
         previousOrder = [...displayAssets];
+
+        // Capture source tile dimensions for the floating ghost.
+        const srcRect = node.getBoundingClientRect();
+        dragSourceWidth = srcRect.width || rowHeight;
+        dragSourceHeight = srcRect.height || rowHeight;
       }
 
       dragCursorX = e.clientX;
@@ -118,8 +159,9 @@
       // layout thrashing on large albums during 60fps pointermove events.
       if (!dragState.rafPending) {
         dragState.rafPending = true;
-        requestAnimationFrame(() => {
+        dragState.rafId = requestAnimationFrame(() => {
           dragState.rafPending = false;
+          dragState.rafId = undefined;
           updateDragReorder(dragCursorX, dragCursorY);
         });
       }
@@ -152,121 +194,142 @@
         node.removeEventListener('pointermove', onPointerMove);
         node.removeEventListener('pointerup', onPointerUp);
         node.removeEventListener('pointercancel', onPointerCancel);
+
+        // If this tile is the active drag source and gets removed (e.g. asset
+        // was externally deleted), abandon the in-flight drag so stale pointer
+        // state doesn't block future drags.
+        if (dragState.sourceId === assetId) {
+          resetDragState();
+        }
       },
     };
   }
 
   function updateDragReorder(clientX: number, clientY: number) {
-    if (!dragState.sourceId) {
+    if (!dragState.sourceId || !gridElement || !layoutGeometry) {
       return;
     }
-
-    const targetId = getTargetAssetId(clientX, clientY);
-    if (!targetId || targetId === dragState.sourceId) {
-      dragTargetId = undefined;
-      return;
-    }
-
-    dragTargetId = targetId;
 
     const sourceIndex = displayAssets.findIndex((a) => a.id === dragState.sourceId);
-    const targetIndex = displayAssets.findIndex((a) => a.id === targetId);
-    if (sourceIndex === -1 || targetIndex === -1) {
+    if (sourceIndex === -1) {
       return;
     }
 
-    // Determine whether to insert before or after the target tile,
-    // based on which side of the target the cursor is on.
-    // This prevents the source from getting "stuck" before the target
-    // and needing the cursor to cross the entire tile to advance.
-    const targetEl = document.querySelector<HTMLElement>(`[data-asset-id="${targetId}"]`);
-    let insertAfterTarget = false;
-    if (targetEl) {
-      const rect = targetEl.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      // Insert after when cursor is to the right of the target center.
-      // Using only the horizontal axis gives a clean 50/50 split and
-      // works correctly for both forward and backward drag directions
-      // without oscillation — the grid flows left-to-right per row.
-      insertAfterTarget = clientX > cx;
-    }
+    // Hit-test against the *final* layout positions (tilePositions), never
+    // getBoundingClientRect() on the tiles. The grid container itself isn't
+    // animated by `animate:flip` (only the tiles are), so its rect is stable,
+    // and the tiles' inline top/left/width/height are already at their final
+    // values — flip merely layers a compensating transform on top. Reading the
+    // tiles' live rects would return mid-animation positions and reintroduce
+    // the reorder feedback loop (oscillation).
+    const gridRect = gridElement.getBoundingClientRect();
+    const localX = clientX - gridRect.left;
+    const localY = clientY - gridRect.top;
 
-    let insertIndex = insertAfterTarget ? targetIndex + 1 : targetIndex;
-    // Adjust for source removal: if source is before insert point, removal shifts it left
-    if (sourceIndex < insertIndex) {
-      insertIndex--;
+    const insertIndex = computeInsertIndex(localX, localY);
+
+    // Highlight the tile adjacent to the insertion gap for visual feedback.
+    const afterGap = displayAssets[insertIndex];
+    const beforeGap = displayAssets[insertIndex - 1];
+    dragTargetId =
+      afterGap && afterGap.id !== dragState.sourceId
+        ? afterGap.id
+        : beforeGap && beforeGap.id !== dragState.sourceId
+          ? beforeGap.id
+          : undefined;
+
+    // `insertIndex` is a gap index in the full array (0..n). Convert it to a
+    // splice position in the array with the source removed, and no-op when the
+    // source is already at that gap.
+    let target = insertIndex;
+    if (sourceIndex < target) {
+      target--;
     }
-    if (sourceIndex === insertIndex) {
-      return; // No change — prevents adjacent-element oscillation
+    if (sourceIndex === target) {
+      return;
     }
 
     previousOrder ??= [...displayAssets];
 
     const next = [...displayAssets];
     const [moved] = next.splice(sourceIndex, 1);
-    next.splice(insertIndex, 0, moved);
+    next.splice(target, 0, moved);
     displayAssets = next;
   }
 
-  function getTargetAssetId(clientX: number, clientY: number): string | undefined {
-    const grid = document.querySelector('[data-reorder-grid]');
-    if (!grid) {
-      return undefined;
+  // Compute the insertion gap index (0..n) for the cursor at grid-local
+  // coordinates, using the *final* justified-layout positions. The array is
+  // already in reading order (row-major), so we walk it once: tiles in rows
+  // above the cursor are "passed", tiles in rows below are not, and within the
+  // cursor's row the horizontal position decides. This correctly handles row
+  // boundaries — the end of one row and the start of the next share a single
+  // gap index, so the cursor can never "jump" a row — and, because positions
+  // are final (not mid-flip), the decision is stable across reorders.
+  function computeInsertIndex(localX: number, localY: number): number {
+    const n = displayAssets.length;
+    if (n === 0) {
+      return 0;
     }
-
-    const tiles = grid.querySelectorAll<HTMLElement>('[data-asset-id]');
-    let bestId: string | undefined;
-    let bestDist = Infinity;
-    let currentTargetDist = Infinity;
-
-    for (const tile of tiles) {
-      const id = tile.dataset.assetId;
-      if (!id || id === dragState.sourceId) {
+    // The layout emits logical (LTR) `left` values; mirror the cursor in RTL so
+    // reading-order comparisons stay direction-agnostic.
+    const logicalX = gridIsRtl ? gridWidth - localX : localX;
+    let insertIndex = 0;
+    for (let i = 0; i < n; i++) {
+      const p = tilePositions[i];
+      if (!p) {
         continue;
       }
-
-      // getBoundingClientRect includes CSS transforms, so it reflects
-      // visual positions during FLIP animations — direction-agnostic
-      const rect = tile.getBoundingClientRect();
-      const cx = rect.left + rect.width / 2;
-      const cy = rect.top + rect.height / 2;
-      const dist = Math.hypot(clientX - cx, clientY - cy);
-
-      if (id === dragTargetId) {
-        currentTargetDist = dist;
+      const rowTop = p.top;
+      const rowBottom = p.top + p.height;
+      if (localY >= rowBottom) {
+        // Cursor below this tile's row → past it in reading order.
+        insertIndex = i + 1;
+        continue;
       }
-
-      if (dist < bestDist) {
-        bestDist = dist;
-        bestId = id;
+      if (localY < rowTop) {
+        // Cursor above this tile's row → before it; rows are monotonic, so stop.
+        break;
       }
+      // Cursor within this tile's row band → decide by horizontal position.
+      const centerX = p.left + p.width / 2;
+      const deadHalf = Math.max(p.width * 0.15, 4);
+      if (logicalX > centerX + deadHalf) {
+        insertIndex = i + 1;
+        dragState.lastInsertAfter = true;
+        continue;
+      }
+      if (logicalX < centerX - deadHalf) {
+        dragState.lastInsertAfter = false;
+        break;
+      }
+      // Inside the dead zone → keep the previous direction (hysteresis). Final
+      // positions are stable, so this only smooths sub-pixel jitter at a tile's
+      // exact centre.
+      if (dragState.lastInsertAfter) {
+        insertIndex = i + 1;
+        continue;
+      }
+      break;
     }
-
-    // Hysteresis: don't switch away from the current target unless
-    // the new candidate is at least HYSTERESIS_PX closer.
-    // This prevents rapid oscillation when dragging between rows.
-    if (
-      dragTargetId &&
-      bestId &&
-      bestId !== dragTargetId &&
-      currentTargetDist < Infinity &&
-      currentTargetDist - bestDist < HYSTERESIS_PX
-    ) {
-      return dragTargetId;
-    }
-
-    return bestId;
+    return insertIndex;
   }
 
   function clearDragVisuals() {
     dragState.pointerId = undefined;
     dragState.sourceId = undefined;
     dragState.exceededThreshold = false;
+    if (dragState.rafId !== undefined) {
+      cancelAnimationFrame(dragState.rafId);
+      dragState.rafId = undefined;
+    }
     dragState.rafPending = false;
+    dragSourceWidth = 0;
+    dragSourceHeight = 0;
     dragTargetId = undefined;
   }
 
   function resetDragState() {
+    saveInFlight = false;
     previousOrder = null;
     isDragging = false;
     clearDragVisuals();
@@ -279,14 +342,30 @@
     }
 
     if (dragState.exceededThreshold) {
+      // Apply one last synchronous reorder with the final cursor position.
+      // The drag reorder is normally throttled via requestAnimationFrame, so
+      // the last pointermove may have scheduled a RAF that hasn't fired yet.
+      // Without this sync call, the committed order would be based on a stale
+      // cursor position, making the drop point feel displaced from the ghost.
+      if (dragState.rafId !== undefined) {
+        cancelAnimationFrame(dragState.rafId);
+        dragState.rafPending = false;
+        dragState.rafId = undefined;
+      }
+      updateDragReorder(dragCursorX, dragCursorY);
+
       const movedId = dragState.sourceId;
       const allIds = displayAssets.map((a) => a.id);
       const fallbackOrder = previousOrder;
+      // Snapshot the committed order before awaiting so interleaved state
+      // changes from a second (blocked) drag can't affect the callback.
+      const committedOrder = [...displayAssets];
 
       // Clear visual drag feedback immediately (thumbnail, highlights) but
       // keep isDragging = true so the sync $effect won't clobber
       // displayAssets with the parent's stale order during the API call.
       clearDragVisuals();
+      saveInFlight = true;
 
       // Save in background, non-blocking for the UI
       const success = await handleMoveAlbumAsset(album.id, {
@@ -299,9 +378,10 @@
       if (!success && fallbackOrder) {
         displayAssets = fallbackOrder; // Triggers FLIP animation back
       } else if (success) {
-        onReorder?.([...displayAssets]);
+        onReorder?.(committedOrder);
       }
       isDragging = false;
+      saveInFlight = false;
       previousOrder = null;
     } else {
       // tap → click (no threshold exceeded)
@@ -334,71 +414,83 @@
   {#if isDragging && dragSourceAsset}
     <div
       class="pointer-events-none fixed z-50 overflow-hidden rounded-lg shadow-2xl"
-      style="width: 140px; height: 140px; left: {dragCursorX - 70}px; top: {dragCursorY -
-        70}px; transform: scale(1.05);"
+      style="width: {dragSourceWidth}px; height: {dragSourceHeight}px; left: {dragCursorX -
+        dragSourceWidth / 2}px; top: {dragCursorY -
+        dragSourceHeight / 2}px; transform: scale(1.05);"
     >
-      <Thumbnail asset={dragSourceAsset} readonly={true} />
+      <Thumbnail
+        asset={dragSourceAsset}
+        readonly={true}
+        thumbnailWidth={dragSourceWidth}
+        thumbnailHeight={dragSourceHeight}
+      />
     </div>
   {/if}
 
-  <div
-    data-reorder-grid
-    role="application"
-    class="grid gap-2 p-2"
-    class:touch-none={interactionMode === 'reorder'}
-    style="grid-template-columns: repeat(auto-fill, minmax({rowHeight}px, 1fr));"
-    ondragstart={(e) => e.preventDefault()}
-  >
-    {#each displayAssets as asset (asset.id)}
-      <div
-        data-asset-id={asset.id}
-        data-interaction-mode={interactionMode}
-        use:dragInitAction={{ assetId: asset.id }}
-        class="drag-item-container relative"
-        class:cursor-grab={interactionMode === 'reorder'}
-        class:active:cursor-grabbing={interactionMode === 'reorder'}
-        class:opacity-40={isDragging && dragState.sourceId !== undefined && dragState.sourceId !== asset.id}
-        class:scale-95={isDragging && dragState.sourceId !== undefined && dragState.sourceId !== asset.id}
-        class:z-10={dragState.sourceId === asset.id && isDragging}
-        class:shadow-xl={dragState.sourceId === asset.id && isDragging}
-        animate:flip={{ duration: 150 }}
-      >
-        {#if interactionMode === 'reorder'}
-          <div
-            class="pointer-events-none absolute top-1 left-1 z-10 rounded-sm bg-black/40 p-0.5 opacity-0 transition-opacity group-hover:opacity-100"
-            class:opacity-100={dragState.sourceId === asset.id}
-          >
-            <Icon icon={mdiDragVertical} size="16" color="white" />
+  <div class="p-2">
+    <div
+      bind:this={gridElement}
+      data-reorder-grid
+      role="application"
+      class="relative"
+      class:touch-none={interactionMode === 'reorder'}
+      bind:clientWidth={gridWidth}
+      style:height={gridHeight}
+      style:min-height={gridMinHeight}
+      ondragstart={(e) => e.preventDefault()}
+    >
+      {#each displayAssets as asset, i (asset.id)}
+        {@const pos = tilePositions[i]}
+        <div
+          data-asset-id={asset.id}
+          data-reorder-asset-id={asset.id}
+          data-interaction-mode={interactionMode}
+          use:dragInitAction={{ assetId: asset.id }}
+          class="drag-item-container absolute"
+          style:top={pos ? pos.top + 'px' : '0px'}
+          style:inset-inline-start={pos ? pos.left + 'px' : '0px'}
+          style:width={pos ? pos.width + 'px' : '0px'}
+          style:height={pos ? pos.height + 'px' : '0px'}
+          class:cursor-grab={interactionMode === 'reorder'}
+          class:active:cursor-grabbing={interactionMode === 'reorder'}
+          class:opacity-40={isDragging && dragState.sourceId !== undefined && dragState.sourceId !== asset.id}
+          class:scale-95={isDragging && dragState.sourceId !== undefined && dragState.sourceId !== asset.id}
+          class:z-10={dragState.sourceId === asset.id && isDragging}
+          class:shadow-xl={dragState.sourceId === asset.id && isDragging}
+          animate:flip={{ duration: 150 }}
+        >
+          {#if interactionMode === 'reorder'}
+            <div
+              class="pointer-events-none absolute top-1 left-1 z-10 rounded-sm bg-black/40 p-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+              class:opacity-100={dragState.sourceId === asset.id}
+            >
+              <Icon icon={mdiDragVertical} size="16" color="white" />
+            </div>
+          {/if}
+
+          {#if interactionMode === 'reorder' && asset.id === dragTargetId}
+            <div class="pointer-events-none absolute inset-0 z-10 rounded-lg border-2 border-primary bg-primary/10"></div>
+          {/if}
+
+          <div class="group drag-image relative size-full overflow-hidden rounded-lg">
+            <Thumbnail
+              {asset}
+              readonly={interactionMode === 'reorder'}
+              selected={interactionMode === 'select' ? assetMultiSelectManager.hasSelectedAsset(asset.id) : false}
+              thumbnailWidth={pos?.width}
+              thumbnailHeight={pos?.height}
+              onClick={onClickAsset}
+              onSelect={interactionMode === 'select' ? () => toggleSelection(asset) : undefined}
+            />
           </div>
-        {/if}
-
-        {#if interactionMode === 'reorder' && asset.id === dragTargetId}
-          <div class="pointer-events-none absolute inset-0 z-10 rounded-lg border-2 border-primary bg-primary/10"></div>
-        {/if}
-
-        <div class="group drag-image relative aspect-square overflow-hidden rounded-lg">
-          <Thumbnail
-            {asset}
-            readonly={interactionMode === 'reorder'}
-            selected={interactionMode === 'select' ? assetMultiSelectManager.hasSelectedAsset(asset.id) : false}
-            onClick={onClickAsset}
-            onSelect={interactionMode === 'select' ? () => toggleSelection(asset) : undefined}
-          />
         </div>
-      </div>
-    {/each}
+      {/each}
+    </div>
   </div>
 </div>
 
 <style>
-  .drag-item-container :global([data-thumbnail-focus-container]) {
-    width: 100% !important;
-    height: 100% !important;
-  }
   .drag-item-container :global(img) {
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover;
     -webkit-user-drag: none;
     user-select: none;
   }
