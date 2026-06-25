@@ -45,6 +45,7 @@
     album?: AlbumResponseDto;
     albumUsers?: UserResponseDto[];
     person?: PersonResponseDto;
+    customSortedAssets?: TimelineAsset[];
     onSelect?: (asset: TimelineAsset) => void;
     onEscape?: () => void;
     children?: Snippet;
@@ -77,6 +78,7 @@
     album,
     albumUsers = [],
     person,
+    customSortedAssets = [],
     onSelect = () => {},
     onEscape = () => {},
     children,
@@ -711,7 +713,7 @@
 
 <Portal target="body">
   {#if assetViewerManager.isViewing}
-    <TimelineAssetViewer bind:invisible {timelineManager} {removeAction} {withStacked} {isShared} {album} {person} />
+    <TimelineAssetViewer bind:invisible {timelineManager} {removeAction} {withStacked} {isShared} {album} {person} {customSortedAssets} />
   {/if}
 </Portal>
 
