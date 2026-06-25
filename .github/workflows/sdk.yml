@@ -8,6 +8,7 @@ permissions: {}
 
 jobs:
   publish:
+    if: github.repository == 'immich-app/immich'
     name: Publish `@immich/sdk`
     runs-on: ubuntu-latest
     permissions:

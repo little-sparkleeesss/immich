@@ -20,6 +20,7 @@ permissions: {}
 
 jobs:
   publish:
+    if: github.repository == 'immich-app/immich'
     name: CLI Publish
     runs-on: ubuntu-latest
     permissions:
@@ -60,6 +61,7 @@ jobs:
       contents: read
       packages: write
     needs: publish
+    if: github.repository == 'immich-app/immich'
 
     steps:
       - id: token
