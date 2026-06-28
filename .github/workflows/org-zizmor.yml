@@ -7,6 +7,7 @@ on:
 
 jobs:
   zizmor:
+    if: github.repository == 'immich-app/immich'
     name: Zizmor
     uses: immich-app/devtools/.github/workflows/shared-zizmor.yml@main
     permissions:

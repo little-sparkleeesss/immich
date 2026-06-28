@@ -16316,7 +16316,7 @@
   "info": {
     "title": "Immich",
     "description": "Immich API",
-    "version": "3.0.0-rc.2",
+    "version": "3.0.0-rc.4",
     "contact": {}
   },
   "tags": [
@@ -16362,7 +16362,7 @@
     },
     {
       "name": "Faces",
-      "description": "A face is a detected human face within an asset, which can be associated with a person. Faces are normally detected via machine learning, but can also be created via manually."
+      "description": "A face is a detected human face within an asset, which can be associated with a person. Faces are normally detected via machine learning, but can also be created manually."
     },
     {
       "name": "Integrity (admin)",
@@ -17148,12 +17148,12 @@
           },
           "assetId": {
             "description": "Existing asset ID if duplicate",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
             "type": "string"
           },
           "id": {
-            "description": "Asset ID",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})$",
+            "description": "Client-side identifier echoed from the request to match results to inputs",
             "type": "string"
           },
           "isTrashed": {

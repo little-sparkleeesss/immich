@@ -1,6 +1,6 @@
 /**
  * Immich
- * 3.0.0-rc.2
+ * 3.0.0-rc.4
  * DO NOT MODIFY - This file has been generated using oazapfts.
  * See https://www.npmjs.com/package/oazapfts
  */
@@ -719,7 +719,7 @@ export type AssetBulkUploadCheckResult = {
     action: AssetUploadAction;
     /** Existing asset ID if duplicate */
     assetId?: string;
-    /** Asset ID */
+    /** Client-side identifier echoed from the request to match results to inputs */
     id: string;
     /** Whether existing asset is trashed */
     isTrashed?: boolean;

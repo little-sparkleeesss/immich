@@ -3,10 +3,7 @@ name: Docker
 on:
   workflow_dispatch:
   push:
-    branches: [main]
-  pull_request:
-  release:
-    types: [published]
+    branches: [develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -15,180 +12,212 @@ concurrency:
 permissions: {}
 
 jobs:
-  pre-job:
+  filter:
+    name: Detect changes
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
+      server: ${{ steps.filter.outputs.server }}
+      ml: ${{ steps.filter.outputs.ml }}
     steps:
-      - id: token
-        uses: immich-app/devtools/actions/create-workflow-token@9db058b2e6eec20e07760b0e17a0505c78ec3191 # create-workflow-token-action-v2.0.1
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - id: filter
+        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
         with:
-          client-id: ${{ secrets.PUSH_O_MATIC_APP_CLIENT_ID }}
-          private-key: ${{ secrets.PUSH_O_MATIC_APP_KEY }}
-
-      - name: Check what should run
-        id: check
-        uses: immich-app/devtools/actions/pre-job@91f342bb4477c4bc10c576ae739da875d85aa164 # pre-job-action-v2.0.4
-        with:
-          github-token: ${{ steps.token.outputs.token }}
+          predicate-quantifier: 'some'
           filters: |
             server:
               - 'server/**'
-              - 'openapi/**'
               - 'web/**'
               - 'i18n/**'
-            machine-learning:
+              - 'packages/**'
+              - 'open-api/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.github/workflows/docker.yml'
+            ml:
               - 'machine-learning/**'
-          force-filters: |
-            - '.github/workflows/docker.yml'
-            - '.github/workflows/multi-runner-build.yml'
-            - '.github/actions/image-build'
-          force-events: 'workflow_dispatch,release'
+              - '.github/workflows/docker.yml'
 
-  retag_ml:
-    name: Re-Tag ML
-    needs: pre-job
+  build-server:
+    name: Build Server (${{ matrix.suffix }})
+    needs: filter
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.filter.outputs.server == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-latest
+            suffix: amd64
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            suffix: arm64
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
-    if: ${{ fromJSON(needs.pre-job.outputs.should_run).machine-learning == false && !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        suffix: ['', '-cuda', '-rocm', '-openvino', '-armnn', '-rknn']
     steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Re-tag image
-        env:
-          REGISTRY_NAME: 'ghcr.io'
-          REPOSITORY: ${{ github.repository_owner }}/immich-machine-learning
-          TAG_OLD: main${{ matrix.suffix }}
-          TAG_PR: ${{ github.event.number == 0 && github.ref_name || format('pr-{0}', github.event.number) }}${{ matrix.suffix }}
-          TAG_COMMIT: commit-${{ github.event_name != 'pull_request' && github.sha || github.event.pull_request.head.sha }}${{ matrix.suffix }}
-        run: |
-          docker buildx imagetools create -t "${REGISTRY_NAME}/${REPOSITORY}:${TAG_PR}" "${REGISTRY_NAME}/${REPOSITORY}:${TAG_OLD}"
-          docker buildx imagetools create -t "${REGISTRY_NAME}/${REPOSITORY}:${TAG_COMMIT}" "${REGISTRY_NAME}/${REPOSITORY}:${TAG_OLD}"
+      - name: Build and push (single platform)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          file: server/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          provenance: false
+          tags: ghcr.io/${{ github.repository_owner }}/immich-server:develop-linux-${{ matrix.suffix }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/immich-server-build-cache:linux-${{ matrix.suffix }}
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/immich-server-build-cache:linux-${{ matrix.suffix }},mode=max,compression=zstd
+          build-args: |
+            BUILD_ID=${{ github.run_id }}
+            BUILD_IMAGE=immich-server
+            BUILD_SOURCE_REF=${{ github.ref }}
+            BUILD_SOURCE_COMMIT=${{ github.sha }}
+            DEVICE=cpu
 
-  retag_server:
-    name: Re-Tag Server
-    needs: pre-job
+  merge-server:
+    name: Merge Server manifest
+    needs: build-server
+    if: ${{ always() && needs.build-server.result == 'success' }}
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    if: ${{ fromJSON(needs.pre-job.outputs.should_run).server == false && !github.event.pull_request.head.repo.fork }}
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        suffix: ['']
     steps:
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Re-tag image
+      - name: Create multi-arch manifests
         env:
-          REGISTRY_NAME: 'ghcr.io'
-          REPOSITORY: ${{ github.repository_owner }}/immich-server
-          TAG_OLD: main${{ matrix.suffix }}
-          TAG_PR: ${{ github.event.number == 0 && github.ref_name || format('pr-{0}', github.event.number) }}${{ matrix.suffix }}
-          TAG_COMMIT: commit-${{ github.event_name != 'pull_request' && github.sha || github.event.pull_request.head.sha }}${{ matrix.suffix }}
+          IMAGE: ghcr.io/${{ github.repository_owner }}/immich-server
         run: |
-          docker buildx imagetools create -t "${REGISTRY_NAME}/${REPOSITORY}:${TAG_PR}" "${REGISTRY_NAME}/${REPOSITORY}:${TAG_OLD}"
-          docker buildx imagetools create -t "${REGISTRY_NAME}/${REPOSITORY}:${TAG_COMMIT}" "${REGISTRY_NAME}/${REPOSITORY}:${TAG_OLD}"
+          docker buildx imagetools create \
+            -t "${IMAGE}:develop" \
+            -t "${IMAGE}:commit-${{ github.sha }}" \
+            "${IMAGE}:develop-linux-amd64" \
+            "${IMAGE}:develop-linux-arm64"
 
-  machine-learning:
-    name: Build and Push ML
-    needs: pre-job
-    if: ${{ fromJSON(needs.pre-job.outputs.should_run).machine-learning == true }}
+  build-ml:
+    name: Build ML (${{ matrix.device }} ${{ matrix.suffix }})
+    needs: filter
+    if: ${{ github.event_name == 'workflow_dispatch' || needs.filter.outputs.ml == 'true' }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - device: cpu
+            tag_suffix: ''
+            platform: linux/amd64
+            runner: ubuntu-latest
+            suffix: amd64
+          - device: cpu
+            tag_suffix: ''
+            platform: linux/arm64
+            runner: ubuntu-24.04-arm
+            suffix: arm64
           - device: cuda
-            suffixes: '-cuda'
-            platforms: linux/amd64
+            tag_suffix: '-cuda'
+            platform: linux/amd64
+            runner: ubuntu-latest
+            suffix: amd64
           - device: openvino
-            suffixes: '-openvino'
-            platforms: linux/amd64
-          - device: armnn
-            suffixes: '-armnn'
-            platforms: linux/arm64
-          - device: rknn
-            suffixes: '-rknn'
-            platforms: linux/arm64
-          - device: rocm
-            suffixes: '-rocm'
-            platforms: linux/amd64
-            runner-mapping: '{"linux/amd64": "pokedex-large"}'
-    uses: immich-app/devtools/.github/workflows/multi-runner-build.yml@50dc3a14f0606ecd8fc28d78d3a3c655115ab695 # multi-runner-build-workflow-v3.1.0
+            tag_suffix: '-openvino'
+            platform: linux/amd64
+            runner: ubuntu-latest
+            suffix: amd64
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
-      actions: read
       packages: write
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    with:
-      image: immich-machine-learning
-      context: machine-learning
-      dockerfile: machine-learning/Dockerfile
-      platforms: ${{ matrix.platforms }}
-      runner-mapping: ${{ matrix.runner-mapping }}
-      suffixes: ${{ matrix.suffixes }}
-      dockerhub-push: ${{ github.event_name == 'release' && !github.event.release.prerelease }}
-      build-args: |
-        DEVICE=${{ matrix.device }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-  server:
-    name: Build and Push Server
-    needs: pre-job
-    if: ${{ fromJSON(needs.pre-job.outputs.should_run).server == true }}
-    uses: immich-app/devtools/.github/workflows/multi-runner-build.yml@50dc3a14f0606ecd8fc28d78d3a3c655115ab695 # multi-runner-build-workflow-v3.1.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push (single platform)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: machine-learning
+          file: machine-learning/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          provenance: false
+          tags: ghcr.io/${{ github.repository_owner }}/immich-machine-learning:develop${{ matrix.tag_suffix }}-linux-${{ matrix.suffix }}
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/immich-machine-learning-build-cache:${{ matrix.device }}-linux-${{ matrix.suffix }}
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/immich-machine-learning-build-cache:${{ matrix.device }}-linux-${{ matrix.suffix }},mode=max,compression=zstd
+          build-args: |
+            BUILD_ID=${{ github.run_id }}
+            BUILD_IMAGE=immich-machine-learning
+            BUILD_SOURCE_REF=${{ github.ref }}
+            BUILD_SOURCE_COMMIT=${{ github.sha }}
+            DEVICE=${{ matrix.device }}
+
+  merge-ml:
+    name: Merge ML manifest (${{ matrix.device }})
+    needs: build-ml
+    if: ${{ always() && needs.build-ml.result == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # sources 是空格分隔的完整 per-platform tag（不含 IMAGE 前缀），由 shell 拼
+          - device: cpu
+            tag_suffix: ''
+            sources: develop-linux-amd64 develop-linux-arm64
+          - device: cuda
+            tag_suffix: '-cuda'
+            sources: develop-cuda-linux-amd64
+          - device: openvino
+            tag_suffix: '-openvino'
+            sources: develop-openvino-linux-amd64
     permissions:
       contents: read
-      actions: read
       packages: write
-    secrets:
-      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    with:
-      image: immich-server
-      context: .
-      dockerfile: server/Dockerfile
-      dockerhub-push: ${{ github.event_name == 'release' && !github.event.release.prerelease }}
-      build-args: |
-        DEVICE=cpu
-
-  success-check-server:
-    name: Docker Build & Push Server Success
-    needs: [server, retag_server]
-    permissions: {}
-    runs-on: ubuntu-latest
-    if: always()
     steps:
-      - uses: immich-app/devtools/actions/success-check@81113db03f6d743efee81e0058c0b43f6cd6f36d # success-check-action-v0.0.6
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
-          needs: ${{ toJSON(needs) }}
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-  success-check-ml:
-    name: Docker Build & Push ML Success
-    needs: [machine-learning, retag_ml]
-    permissions: {}
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - uses: immich-app/devtools/actions/success-check@81113db03f6d743efee81e0058c0b43f6cd6f36d # success-check-action-v0.0.6
-        with:
-          needs: ${{ toJSON(needs) }}
+      - name: Create multi-arch manifests
+        env:
+          IMAGE: ghcr.io/${{ github.repository_owner }}/immich-machine-learning
+          TAG_SUFFIX: ${{ matrix.tag_suffix }}
+          SOURCES: ${{ matrix.sources }}
+        run: |
+          read -ra srcs <<< "$SOURCES"
+          args=()
+          for s in "${srcs[@]}"; do args+=("${IMAGE}:${s}"); done
+          docker buildx imagetools create \
+            -t "${IMAGE}:develop${TAG_SUFFIX}" \
+            -t "${IMAGE}:commit-${{ github.sha }}${TAG_SUFFIX}" \
+            "${args[@]}"
