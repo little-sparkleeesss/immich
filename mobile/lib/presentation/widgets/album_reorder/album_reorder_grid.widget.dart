@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:immich_mobile/domain/models/asset/base_asset.model.dart';
@@ -50,8 +53,7 @@ class AlbumReorderGrid extends ConsumerStatefulWidget {
   ConsumerState<AlbumReorderGrid> createState() => _AlbumReorderGridState();
 }
 
-class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
-    with SingleTickerProviderStateMixin {
+class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid> with SingleTickerProviderStateMixin {
   /// Mutable ordered list of assets (for optimistic local reorder).
   late List<BaseAsset> _orderedAssets;
 
@@ -77,21 +79,63 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
   /// Drives the FLIP transition animation (200ms).
   AnimationController? _flipController;
 
+  // ---- Edge auto-scroll state ----
+  // When the user drags a tile into the top/bottom ~12% of the viewport, a
+  // periodic timer scrolls the grid so a tile can be moved over long distances
+  // without releasing the drag. Mirrors the pattern in TimelineDragRegion.
+
+  /// Inner scroll controller obtained from the NestedScrollView's injected
+  /// PrimaryScrollController. Null before first layout or if detached.
+  ScrollController? _scrollController;
+
+  /// Inner Scrollable, used to read the viewport RenderBox + dimensions.
+  ScrollableState? _scrollable;
+
+  Timer? _autoScrollTimer;
+
+  /// Last pointer global position, refreshed on every onMove. The timer tick
+  /// uses it to recompute the target tile as scrolling brings new tiles under
+  /// the (possibly stationary) pointer.
+  Offset? _lastPointerOffset;
+
+  /// The asset currently being dragged, cached so the timer tick can call
+  /// [_moveAsset] without a fresh DragTargetDetails.
+  BaseAsset? _activeDragData;
+
+  /// Top/bottom fraction of the viewport that triggers auto-scroll.
+  static const double _edgeFraction = 0.12;
+
+  static const Duration _tickInterval = Duration(milliseconds: 50);
+
+  /// Scroll step per tick at the inner edge of the zone (slow crawl).
+  static const double _minScrollStep = 120.0;
+
+  /// Scroll step per tick at the very screen edge (fast traverse).
+  static const double _maxScrollStep = 320.0;
+
   @override
   void initState() {
     super.initState();
     _orderedAssets = List.of(widget.assets);
 
-    _flipController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    );
+    _flipController = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
     _flipController!.addListener(_onFlipTick);
     _flipController!.addStatusListener(_onFlipStatus);
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // The grid lives in a NestedScrollView body, which injects its inner
+    // controller via PrimaryScrollController. Grab it (and the inner Scrollable
+    // for viewport geometry) so we can drive auto-scroll during a drag.
+    _scrollController = PrimaryScrollController.maybeOf(context);
+    _scrollable = Scrollable.of(context);
+  }
+
+  @override
   void dispose() {
+    _autoScrollTimer?.cancel();
     _flipController?.removeListener(_onFlipTick);
     _flipController?.removeStatusListener(_onFlipStatus);
     _flipController?.dispose();
@@ -111,10 +155,7 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
   /// Removes stale tile keys for assets no longer in the list.
   void _syncTileKeys() {
     final currentTags = _orderedAssets.map((a) => a.heroTag).toSet();
-    _tileKeys.keys
-        .where((tag) => !currentTags.contains(tag))
-        .toList()
-        .forEach(_tileKeys.remove);
+    _tileKeys.keys.where((tag) => !currentTags.contains(tag)).toList().forEach(_tileKeys.remove);
   }
 
   // ---- Reorder logic ----
@@ -126,8 +167,7 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
     final positions = <String, Offset>{};
     for (final asset in _orderedAssets) {
       final key = _tileKeys[asset.heroTag];
-      if (key?.currentContext?.findRenderObject() case final RenderBox box
-          when box.attached) {
+      if (key?.currentContext?.findRenderObject() case final RenderBox box when box.attached) {
         positions[asset.heroTag] = box.localToGlobal(Offset.zero);
       }
     }
@@ -248,6 +288,8 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
   }
 
   void _cancelDrag() {
+    _stopAutoScroll();
+    _activeDragData = null;
     if (_previousOrder == null || !mounted) return;
 
     // Cancel any in-progress FLIP
@@ -268,6 +310,100 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
       final positionsAfter = _snapshotTilePositions();
       _computeFlips(positionsBefore, positionsAfter);
     });
+  }
+
+  // ---- Edge auto-scroll ----
+
+  /// Returns the auto-scroll direction and how far the pointer is into the
+  /// edge zone (depth in [0..1], 0 at the inner boundary, 1 at the screen
+  /// edge), or null when the pointer is outside both edge zones.
+  ({ScrollDirection direction, double depth})? _edgeZone(Offset globalOffset) {
+    final ctrl = _scrollController;
+    final box = _scrollable?.context.findRenderObject() as RenderBox?;
+    if (ctrl == null || !ctrl.hasClients) {
+      return null;
+    }
+    if (box == null || !box.attached) {
+      return null;
+    }
+    final pos = ctrl.position;
+    if (!pos.hasViewportDimension) {
+      return null;
+    }
+    final vh = pos.viewportDimension;
+    final localDy = box.globalToLocal(globalOffset).dy;
+    final edge = vh * _edgeFraction;
+    if (localDy < edge) {
+      return (direction: ScrollDirection.reverse, depth: (1.0 - (localDy / edge)).clamp(0.0, 1.0));
+    } else if (localDy > vh - edge) {
+      return (direction: ScrollDirection.forward, depth: ((localDy - (vh - edge)) / edge).clamp(0.0, 1.0));
+    }
+    return null;
+  }
+
+  /// Called from DragTarget onWillAccept/onMove: caches the pointer position
+  /// and dragged asset, and starts/stops the auto-scroll timer based on
+  /// whether the pointer is in an edge zone.
+  void _updateAutoScroll(Offset globalOffset, BaseAsset data) {
+    _lastPointerOffset = globalOffset;
+    _activeDragData = data;
+    if (_edgeZone(globalOffset) != null) {
+      _autoScrollTimer ??= Timer.periodic(_tickInterval, _autoScrollTick);
+    } else {
+      _stopAutoScroll();
+    }
+  }
+
+  void _autoScrollTick(Timer _) {
+    final offset = _lastPointerOffset;
+    if (offset == null) {
+      _stopAutoScroll();
+      return;
+    }
+    // Recompute the zone every tick: fresh depth + handle leaving the zone or
+    // reversing direction without separate state tracking.
+    final zone = _edgeZone(offset);
+    if (zone == null) {
+      _stopAutoScroll();
+      return;
+    }
+    final ctrl = _scrollController;
+    if (ctrl == null || !ctrl.hasClients) {
+      return;
+    }
+    final pos = ctrl.position;
+    if (!pos.hasViewportDimension) {
+      return;
+    }
+
+    final step = _minScrollStep + (_maxScrollStep - _minScrollStep) * zone.depth;
+    final target = (pos.pixels + (zone.direction == ScrollDirection.forward ? step : -step)).clamp(
+      pos.minScrollExtent,
+      pos.maxScrollExtent,
+    );
+    // Already at the extent: skip to avoid a busy-spin of no-op animations.
+    if ((target - pos.pixels).abs() < 0.5) {
+      return;
+    }
+    unawaited(ctrl.animateTo(target, duration: const Duration(milliseconds: 100), curve: Curves.easeOut));
+
+    // The pointer may be stationary, but scrolling moved new tiles under it.
+    // Recompute the nearest tile after layout reflects the new offset.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _lastPointerOffset == null || _activeDragData == null) {
+        return;
+      }
+      final index = _findNearestIndex(_lastPointerOffset!);
+      if (index != null && index != _dragTargetIndex) {
+        setState(() => _dragTargetIndex = index);
+        _moveAsset(_activeDragData!, index);
+      }
+    });
+  }
+
+  void _stopAutoScroll() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = null;
   }
 
   // ---- Build ----
@@ -346,9 +482,11 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
               _moveAsset(details.data, index);
               setState(() {}); // trigger highlight repaint
             }
+            _updateAutoScroll(details.offset, details.data);
             return true;
           },
           onMove: (details) {
+            _updateAutoScroll(details.offset, details.data);
             final index = _findNearestIndex(details.offset);
             if (index != _dragTargetIndex) {
               setState(() {
@@ -360,11 +498,15 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
             }
           },
           onLeave: (_) {
+            _stopAutoScroll();
+            _activeDragData = null;
             if (_dragTargetIndex != null) {
               setState(() => _dragTargetIndex = null);
             }
           },
           onAcceptWithDetails: (details) {
+            _stopAutoScroll();
+            _activeDragData = null;
             _lastDraggedAsset = details.data;
             final index = _findNearestIndex(details.offset);
             if (index != null) {
@@ -389,12 +531,9 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
                   color: context.colorScheme.primary.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: const BorderRadius.all(Radius.circular(20)),
                 ),
-                child: Text(
-                  'Saving...',
-                  style: TextStyle(color: context.colorScheme.onPrimary, fontSize: 13),
-                ),
+                child: Text('Saving...', style: TextStyle(color: context.colorScheme.onPrimary, fontSize: 13)),
               ),
             ),
           ),
@@ -423,8 +562,7 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
                 widget.onClickAsset(asset, _orderedAssets);
               }
             },
-            onLongPress: () =>
-                ref.read(multiSelectProvider.notifier).toggleAssetSelection(asset),
+            onLongPress: () => ref.read(multiSelectProvider.notifier).toggleAssetSelection(asset),
             child: ThumbnailTile(asset, heroOffset: 0),
           );
         },
@@ -441,7 +579,10 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
         },
         onDragEnd: (_) {
           // _finalizeReorder is called from DragTarget.onAcceptWithDetails
-          // because onDragEnd is unreliable inside a SliverGrid.
+          // because onDragEnd is unreliable inside a SliverGrid. Still cancel
+          // any auto-scroll as a backstop in case onAccept/onLeave are skipped.
+          _stopAutoScroll();
+          _activeDragData = null;
         },
         onDraggableCanceled: (_, __) => _cancelDrag(),
         feedback: Transform.translate(
@@ -451,21 +592,14 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
           offset: const Offset(-73.5, -73.5),
           child: Material(
             elevation: 8,
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: const BorderRadius.all(Radius.circular(8)),
             child: Transform.scale(
               scale: 1.05,
-              child: SizedBox(
-                width: 140,
-                height: 140,
-                child: _DragFeedbackImage(asset: asset),
-              ),
+              child: SizedBox(width: 140, height: 140, child: _DragFeedbackImage(asset: asset)),
             ),
           ),
         ),
-        childWhenDragging: Opacity(
-          opacity: 0.3,
-          child: ThumbnailTile(asset, heroOffset: 0),
-        ),
+        childWhenDragging: Opacity(opacity: 0.3, child: ThumbnailTile(asset, heroOffset: 0)),
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: () => widget.onClickAsset(asset, _orderedAssets),
@@ -477,7 +611,7 @@ class _AlbumReorderGridState extends ConsumerState<AlbumReorderGrid>
                 Container(
                   decoration: BoxDecoration(
                     border: Border.all(color: context.colorScheme.primary, width: 2),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: const BorderRadius.all(Radius.circular(8)),
                     color: context.colorScheme.primary.withValues(alpha: 0.1),
                   ),
                 ),
@@ -506,11 +640,8 @@ class _DragFeedbackImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image(
-        image: getFullImageProvider(asset),
-        fit: BoxFit.cover,
-      ),
+      borderRadius: const BorderRadius.all(Radius.circular(8)),
+      child: Image(image: getFullImageProvider(asset), fit: BoxFit.cover),
     );
   }
 }
