@@ -34,6 +34,7 @@ jobs:
           review: false
 
   check-mobile-patches:
+    if: github.repository == 'immich-app/immich'
     runs-on: ubuntu-latest
     permissions:
       contents: read
