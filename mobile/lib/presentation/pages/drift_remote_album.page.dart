@@ -142,6 +142,20 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
     });
   }
 
+  /// Binary code-unit order comparator matching PostgreSQL COLLATE "C".
+  ///
+  /// For the current CRDT alphabet (0-9, a-z) this is equivalent to Dart's
+  /// default [String.compareTo]; using explicit code-unit comparison guards
+  /// against future alphabet expansion to non-ASCII characters.
+  static int _compareCollationC(String a, String b) {
+    final minLen = a.length < b.length ? a.length : b.length;
+    for (int i = 0; i < minLen; i++) {
+      final diff = a.codeUnitAt(i) - b.codeUnitAt(i);
+      if (diff != 0) return diff;
+    }
+    return a.length - b.length;
+  }
+
   Future<void> _fetchCustomSortedAssets() async {
     setState(() => _isLoadingPositions = true);
     try {
@@ -167,7 +181,7 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
             final posA = positionMap[a.id];
             final posB = positionMap[b.id];
             if (posA != null && posB != null) {
-              return posA.compareTo(posB);
+              return _compareCollationC(posA, posB);
             }
             if (posA != null) return -1;
             if (posB != null) return 1;
@@ -197,11 +211,9 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
 
   Future<bool> _handleMove(String assetId, List<String> orderedAssetIds) async {
     try {
-      await ref.read(remoteAlbumProvider.notifier).moveAlbumAsset(
-        _album.id,
-        assetId: assetId,
-        assetIds: orderedAssetIds,
-      );
+      await ref
+          .read(remoteAlbumProvider.notifier)
+          .moveAlbumAsset(_album.id, assetId: assetId, assetIds: orderedAssetIds);
       if (mounted && _customSortedAssets != null) {
         final assetMap = <String, BaseAsset>{};
         for (final a in _customSortedAssets!) {
@@ -235,11 +247,9 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
     AssetViewer.setAsset(ref, asset);
 
     unawaited(
-      context.pushRoute(AssetViewerRoute(
-        initialIndex: index,
-        timelineService: viewerTimelineService,
-        currentAlbum: _album,
-      )),
+      context.pushRoute(
+        AssetViewerRoute(initialIndex: index, timelineService: viewerTimelineService, currentAlbum: _album),
+      ),
     );
   }
 
@@ -326,17 +336,12 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
     // Single ProviderScope shared by both sort modes — prevents provider
     // teardown/recreation when toggling between date and custom sort.
     return ProviderScope(
-      overrides: [
-        timelineOverride,
-        currentRemoteAlbumScopedProvider.overrideWithValue(_album),
-      ],
+      overrides: [timelineOverride, currentRemoteAlbumScopedProvider.overrideWithValue(_album)],
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 250),
         switchInCurve: Curves.easeOut,
         switchOutCurve: Curves.easeIn,
-        child: _sortOrder == AlbumSortOrder.custom
-            ? _buildCustomSortMode(isOwner)
-            : _buildDateSortMode(isOwner),
+        child: _sortOrder == AlbumSortOrder.custom ? _buildCustomSortMode(isOwner) : _buildDateSortMode(isOwner),
       ),
     );
   }
@@ -371,8 +376,7 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
                         onAddUsers: () => addUsers(context),
                         onAddPhotos: () => addAssets(context),
                         onEditAlbum: () => showEditTitleAndDescription(context),
-                        onCreateSharedLink: () =>
-                            unawaited(context.pushRoute(SharedLinkEditRoute(albumId: _album.id))),
+                        onCreateSharedLink: () => unawaited(context.pushRoute(SharedLinkEditRoute(albumId: _album.id))),
                         onShowOptions: () => context.pushRoute(DriftAlbumOptionsRoute(album: _album)),
                       ),
                       onEditTitle: isOwner ? () => showEditTitleAndDescription(context) : null,
@@ -392,14 +396,14 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
                   body: _isLoadingPositions
                       ? const Center(child: CircularProgressIndicator())
                       : _customSortedAssets != null
-                          ? AlbumReorderGrid(
-                              assets: _customSortedAssets!,
-                              interactionMode: _interactionMode,
-                              columnCount: ref.read(appConfigProvider.select((config) => config.timeline.tilesPerRow)),
-                              onClickAsset: _openAssetViewer,
-                              onMove: _handleMove,
-                            )
-                          : const Center(child: Text('No assets')),
+                      ? AlbumReorderGrid(
+                          assets: _customSortedAssets!,
+                          interactionMode: _interactionMode,
+                          columnCount: ref.read(appConfigProvider.select((config) => config.timeline.tilesPerRow)),
+                          onClickAsset: _openAssetViewer,
+                          onMove: _handleMove,
+                        )
+                      : const Center(child: Text('No assets')),
                 ),
                 if (isMultiSelectEnabled) RemoteAlbumBottomSheet(album: _album),
               ],
@@ -422,8 +426,7 @@ class _RemoteAlbumPageState extends ConsumerState<RemoteAlbumPage> {
           onAddUsers: () => addUsers(context),
           onAddPhotos: () => addAssets(context),
           onEditAlbum: () => showEditTitleAndDescription(context),
-          onCreateSharedLink: () =>
-              unawaited(context.pushRoute(SharedLinkEditRoute(albumId: _album.id))),
+          onCreateSharedLink: () => unawaited(context.pushRoute(SharedLinkEditRoute(albumId: _album.id))),
           onShowOptions: () => context.pushRoute(DriftAlbumOptionsRoute(album: _album)),
         ),
         onEditTitle: isOwner ? () => showEditTitleAndDescription(context) : null,

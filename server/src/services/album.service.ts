@@ -333,6 +333,9 @@ export class AlbumService extends BaseService {
     const movedIdx = assetIds.indexOf(assetId);
 
     if (movedIdx === -1) {
+      this.logger.debug(
+        `Failed to move asset in album: assetId=${assetId} not found in the ordered list (length=${assetIds.length})`,
+      );
       throw new BadRequestException('Asset not found in the ordered list');
     }
 

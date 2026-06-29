@@ -397,15 +397,20 @@ export class AlbumRepository {
       return;
     }
 
+    // Single bulk UPDATE ... FROM (VALUES ...) via raw SQL, matching the
+    // project's batch-operation pattern (cf. addAssetIds / createAlbum).
+    // Kysely's UpdateQueryBuilder.from() does not accept sql`...` expressions
+    // so we use the sql tag directly, consistent with this file's existing
+    // raw-SQL usage (e.g. COLLATE "C" ordering at line 72).
+    const values = sql.join(positions.map(({ assetId, position }) => sql`(${assetId}::uuid, ${position}::text)`));
+
     await this.db.transaction().execute(async (tx) => {
-      for (const { assetId, position } of positions) {
-        await tx
-          .updateTable('album_asset')
-          .set({ position })
-          .where('album_asset.albumId', '=', albumId)
-          .where('album_asset.assetId', '=', assetId)
-          .execute();
-      }
+      await sql`
+        UPDATE album_asset SET "position" = v."position"
+        FROM (VALUES ${values}) AS v("asset_id", "position")
+        WHERE album_asset."albumId" = ${albumId}
+          AND album_asset."assetId" = v."asset_id"
+      `.execute(tx);
     });
   }
 
